@@ -16,7 +16,7 @@ from brian2.input import TimedArray
 from brian2 import NeuronGroup, StateMonitor, store, restore, run, defaultclock, second, Quantity
 from brian2.stateupdaters.base import StateUpdateMethod
 
-from differential_evolution import differential_evolution
+from .differential_evolution import differential_evolution
 
 __all__=['fit_traces']
 
