@@ -10,7 +10,6 @@ input_traces = zeros((10,1))*volt
 for i in range(1):
     input_traces[1:,i]=i*10*mV
 
-# Create target current traces
 output_traces = 10*nS*input_traces
 
 model = Equations('''
