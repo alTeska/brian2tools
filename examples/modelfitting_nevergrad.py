@@ -7,9 +7,9 @@ from nevergrad import instrumentation as inst
 candidates, parameters = [], []
 
 # create input and output
-input_traces = zeros((10,1))*volt
-for i in range(1):
-    input_traces[1:,i]=i*10*mV
+input_traces = zeros((10,5))*volt
+for i in range(5):
+    input_traces[5:,i]=i*10*mV
 
 output_traces = 10*nS*input_traces
 
@@ -29,6 +29,7 @@ for _ in range(10):
     cand = optim.ask()
     candidates.append(cand)
     parameters.append(list(cand.args))
+
 
 # pass parameters to the NeuronGroup
 errors = fit_traces_ask_tell(model = model, input_var = 'v', output_var = 'I',\

@@ -9,15 +9,6 @@ from brian2.stateupdaters.base import StateUpdateMethod
 __all__=['fit_traces_ask_tell']
 
 
-def parameters_dict(parameters, parameter_names):
-    parameters = array(parameters)
-    d = dict()
-    for name, value in zip(parameter_names, parameters.T):
-        d[name] = value
-
-    return d
-
-
 def fit_traces_ask_tell(model=None,
                input_var=None,
                input = None,
@@ -50,7 +41,9 @@ def fit_traces_ask_tell(model=None,
     # Check input variable
     if input_var not in model.identifiers:
         raise Exception("%s is not an identifier in the model" % input_var)
+
     Nsteps, Ntraces = input.shape
+    # Ntraces, Nsteps = input.shape
     duration = Nsteps*dt
     # Check output variable
     if output_var not in model.names:
@@ -86,12 +79,10 @@ def fit_traces_ask_tell(model=None,
     # Population size for differential evolution
     # (actually in scipy's algorithm this is popsize * nb params)
 
-    # print(parameter_names)
     popsize, _ = shape(update)
     # N = popsize * len(parameter_names)
 
-    N = popsize
-    neurons = NeuronGroup(Ntraces*N, model, method = method)
+    neurons = NeuronGroup(Ntraces * popsize, model, method = method)
     neurons.namespace['input_var'] = input_traces
     neurons.namespace['output_var'] = output_traces
     neurons.namespace['t_start'] = t_start
@@ -109,13 +100,18 @@ def fit_traces_ask_tell(model=None,
 
     def calc_error(update):
 
+        d = dict()
+        parameters = array(update)
+
+        for name, value in zip(parameter_names, parameters.T):
+            d[name] = (ones((Ntraces, popsize)) * parameters.T[0]).T.flatten()
+
         restore()
-        d = parameters_dict(update, parameter_names)
         neurons.set_states(d, units=False)
         run(duration, namespace = {})
 
         e = neurons.total_error/int((duration-t_start)/defaultclock.dt)
-        e = mean(e.reshape((N,Ntraces)),axis=1)
+        e = mean(e.reshape((popsize,Ntraces)),axis=1)
 
         return array(e)
 

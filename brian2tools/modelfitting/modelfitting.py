@@ -9,7 +9,7 @@ TODO:
 * Symbolic gradient calculation
 * Extend to IF models (threshold, reset etc)
 '''
-from numpy import mean, ones, array
+from numpy import mean, ones, array, shape
 from brian2.equations.equations import (DIFFERENTIAL_EQUATION, Equations,
                                         SingleEquation, PARAMETER)
 from brian2.input import TimedArray
@@ -77,6 +77,7 @@ def fit_traces(model = None,
     if input_var not in model.identifiers:
         raise Exception("%s is not an identifier in the model" % input_var)
     Nsteps, Ntraces = input.shape
+    # Ntraces, Nsteps = input.shape
     duration = Nsteps*dt
     # Check output variable
     if output_var not in model.names:
@@ -100,7 +101,6 @@ def fit_traces(model = None,
     model = model_without_diffeq + diffeq_params
 
     # Replace input variable by TimedArray
-    print('input', input)
     input_traces = TimedArray(input, dt = dt)
     input_unit = input.dim
     model = model + Equations(input_var + '= input_var(t,i % Ntraces) : '+ "% s" % repr(input_unit))
@@ -113,8 +113,6 @@ def fit_traces(model = None,
     # Population size for differential evolution
     # (actually in scipy's algorithm this is popsize * nb params)
     N = popsize * len(parameter_names)
-
-    # print(parameter_names)
 
     neurons = NeuronGroup(Ntraces*N, model, method = method)
     neurons.namespace['input_var'] = input_traces
@@ -137,13 +135,11 @@ def fit_traces(model = None,
     def error_function(params):
         # Set parameter values, duplicated over traces
         # params is a list of vectors (vector = value for population)
-        # print('params:', params)
 
         d = dict()
         for name, value in zip(parameter_names, params.T):
             d[name] = (value * ones((Ntraces,N))).T.flatten()
 
-        # print('dictionary', d)
         # Run the model
         restore()
         neurons.set_states(d, units = False)

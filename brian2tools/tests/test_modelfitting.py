@@ -9,16 +9,11 @@ def test_import():
 
 def test_fit_traces():
     # Create voltage traces for an activation experiment
-    # input_traces = zeros((10,5))*volt
-    # for i in range(5):
-    #     input_traces[5:,i]=i*10*mV
-
-    input_traces = zeros((10,1))*volt
-    for i in range(1):
-        input_traces[1:,i]=i*10*mV
+    input_traces = zeros((10,5))*volt
+    for i in range(5):
+        input_traces[5:,i]=i*10*mV
 
     # Create target current traces
-
     output_traces = 10*nS*input_traces
     model = Equations('''
     I = g*(v-E) : amp
