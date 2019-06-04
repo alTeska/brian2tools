@@ -25,7 +25,7 @@ defaultclock.dt = dt
 I = TimedArray(input_current, dt=dt)
 
 print('input', input_current)
-print('input', shape(input_current))
+print('input', shape    (input_current))
 
 # The model
 eqsHH = Equations('''
@@ -76,7 +76,7 @@ params, fits, error = fit_traces(model = eqs, input_var = 'I', output_var = 'v',
         gl = [1e-5*siemens*cm**-2 * area, 1e-6*siemens*cm**-2 * area],
         g_na = [1*msiemens*cm**-2 * area, 200*msiemens*cm**-2 * area],
         g_kd = [1*msiemens*cm**-2 * area, 100*msiemens*cm**-2 * area],
-        tol = 1e-6, popsize=20)
+        popsize=20)
 
 # run the model with new/best parameters
 start_scope()

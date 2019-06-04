@@ -14,12 +14,38 @@ def fit_traces_ask_tell(model=None,
                input = None,
                output_var = None,
                output = None,
-               dt = None, tol = 1e-9,
+               dt = None,
                maxiter = None,
                t_start = 0*second,
                method = ('linear', 'exponential_euler', 'euler'),
                update=None,
                **params):
+    '''
+    Creates an interface for evaluation of parameters drawn by evolutionary
+    algorithms (throough ask/tell interfaces).
+
+
+    Parameters
+    ----------
+    model : `~brian2.equations.Equations` or string
+        The equations describing the model.
+    input_var : string
+        Input variable name.
+    output_var : string
+        Output variable name.
+    input : input data as a 2D array
+    output : output data as a 2D array
+    dt : time step
+    maxiter : int, optional
+        Maximum number of iterations.
+    method: string, optional
+        Integration method
+    t_start: starting time of error measurement.
+    update: list of parameters to evaluate over
+    Returns
+    -------
+    Errors array for each set of parameters (RMS).
+    '''
 
 
     parameter_names = model.parameter_names
@@ -101,17 +127,17 @@ def fit_traces_ask_tell(model=None,
     def calc_error(update):
 
         d = dict()
-        parameters = array(update)
+        update = array(update)
 
-        for name, value in zip(parameter_names, parameters.T):
-            d[name] = (ones((Ntraces, popsize)) * parameters.T[0]).T.flatten()
+        for name, value in zip(parameter_names, update.T):
+            d[name] = (ones((Ntraces, popsize)) * update.T[0]).T.flatten()
 
         restore()
         neurons.set_states(d, units=False)
         run(duration, namespace = {})
 
         e = neurons.total_error/int((duration-t_start)/defaultclock.dt)
-        e = mean(e.reshape((popsize,Ntraces)),axis=1)
+        e = mean(e.reshape((popsize, Ntraces)),axis=1)
 
         return array(e)
 
