@@ -20,7 +20,6 @@ VT = -63*mV
 # Generate a step-current input and an "experimental" voltage trace
 dt = 0.01*ms
 input_current = np.hstack([np.zeros(int(5*ms/dt)), np.ones(int(5*ms/dt)), np.zeros(int(5*ms/dt))])*nA
-print(input_current)
 
 N, n1 = np.array([input_current]).shape
 params_correct = {'gl': float(5e-5*siemens*cm**-2 * area),
@@ -74,8 +73,6 @@ gl   : siemens (constant)
 ''',
 Cm = 1*ufarad*cm**-2 * area, El = -65*mV, EK = -90*mV, ENa = 50*mV, VT = -63*mV)
 
-x_min =200*msiemens*cm**-2 * area
-print(x_min)
 # setup the nevergrad optimizer
 optimizer = Optimizer(
     dimensions=[Real(200*1e-12, 2*1e-9),
@@ -124,7 +121,9 @@ run(20*ms)
 
 voltage1 = mon.v[0]/mV
 
-
+plt.figure()
 plot(np.arange(len(voltage))*dt/ms, voltage);
 plot(np.arange(len(voltage1))*dt/ms, voltage1);
+plt.title('skopt optimization')
+plt.savefig('plots/hh_skopt.png')
 plt.show()

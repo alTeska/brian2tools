@@ -18,7 +18,6 @@ VT = -63*mV
 # Generate a step-current input and an "experimental" voltage trace
 dt = 0.01*ms
 input_current = np.hstack([np.zeros(int(5*ms/dt)), np.ones(int(5*ms/dt)), np.zeros(int(5*ms/dt))])*nA
-print(input_current)
 
 N, n1 = np.array([input_current]).shape
 params_correct = {'gl': float(5e-5*siemens*cm**-2 * area),
@@ -85,7 +84,6 @@ for _ in range(10):
     parameters.append(list(cand.args))
 
 
-# print(parameters)
 
 # pass parameters to the NeuronGroup
 errors = fit_traces_ask_tell(model = eqs, input_var = 'I', output_var = 'v',\
@@ -121,6 +119,9 @@ run(20*ms)
 voltage1 = mon.v[0]/mV
 
 
+plt.figure()
 plot(np.arange(len(voltage))*dt/ms, voltage);
 plot(np.arange(len(voltage1))*dt/ms, voltage1);
+plt.title('nevergrad optimization')
+plt.savefig('plots/hh_nevergrad.png')
 plt.show()

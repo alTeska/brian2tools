@@ -24,9 +24,6 @@ params_correct = {'gl': float(5e-5*siemens*cm**-2 * area),
 defaultclock.dt = dt
 I = TimedArray(input_current, dt=dt)
 
-print('input', input_current)
-print('input', shape    (input_current))
-
 # The model
 eqsHH = Equations('''
 dv/dt = (gl*(El-v) - g_na*(m*m*m)*h*(v-ENa) - g_kd*(n*n*n*n)*(v-EK) + I(t))/Cm : volt
@@ -90,6 +87,9 @@ voltage1 = mon.v[0]/mV
 
 print('correct:', params_correct, '\n output:', params)
 
+plt.figure()
 plot(np.arange(len(voltage))*dt/ms, voltage);
 plot(np.arange(len(voltage1))*dt/ms, voltage1);
+plt.title('scipy modified optimization')
+plt.savefig('plots/hh_fit_traces.png')
 plt.show()
