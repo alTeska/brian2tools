@@ -1,8 +1,10 @@
 '''
 Test the modelfitting module
 '''
-from brian2 import *
-from brian2tools import *
+from brian2 import zeros, Equations
+from brian2 import nS, mV, volt, ms
+from brian2tools import fit_traces
+
 
 def test_import():
     fit_traces
