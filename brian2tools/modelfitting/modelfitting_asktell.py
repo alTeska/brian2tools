@@ -49,7 +49,7 @@ def fit_traces_ask_tell(model=None,
 
 
     parameter_names = model.parameter_names
-    # Check parameter names
+
     for param in params.keys():
         if (param not in model.parameter_names):
             raise Exception("Parameter %s must be defined as a parameter in the model" % param)
@@ -57,6 +57,10 @@ def fit_traces_ask_tell(model=None,
         if (param not in params):
             raise Exception("Bounds must be set for parameter %s" % param)
 
+    bounds = []
+    for name in parameter_names:
+        bounds.append(params[name])# Check parameter names
+    print('bounds', bounds)
 
     # dt must be set
     if dt is None:
