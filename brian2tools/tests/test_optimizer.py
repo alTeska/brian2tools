@@ -3,12 +3,13 @@ Test the optimizer class
 '''
 from brian2tools import Optimizer, NevergradOptimizer
 
-opt = Optimizer()
-nevergrad_opt = NevergradOptimizer()
+opt = Optimizer(bounds=[[0,1]], parameter_names=['a'], method='DE')
+nevergrad_opt = NevergradOptimizer(bounds=[[0,1]], parameter_names=['a'])
+
 
 def test_import():
-    Optimizer()
-    NevergradOptimizer()
+    Optimizer(bounds=[[0,1]], parameter_names=['a'], method='DE')
+    NevergradOptimizer(bounds=[[0,1]], parameter_names={'a'})
 
 def test_ask():
     opt.ask(n_samples=10)

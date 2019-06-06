@@ -17,7 +17,8 @@ model = Equations('''
     ''')
 
 # setup the nevergrad optimizer
-n_opt = NevergradOptimizer(method='DE')
+n_opt = NevergradOptimizer(method='DE', parameter_names={'E', 'g'},
+                           bounds=[[-5, 5], [0, 10]])
 
 candidates, parameters = n_opt.ask(10)
 
