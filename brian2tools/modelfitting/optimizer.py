@@ -1,5 +1,5 @@
 import abc
-# import numpy as np
+from numpy import array
 
 from nevergrad.optimization import optimizerlib, registry
 from nevergrad import instrumentation as inst
@@ -14,7 +14,7 @@ class Optimizer(object):
     fit_traces.
     """
     __metaclass__ = abc.ABCMeta
-    def __init__(self, parameter_names, bounds, method='DE'):
+    def __init__(self, parameter_names, bounds, method, **kwds):
         """Initialize the given optimization method and bounded arguments"""
         pass
 
@@ -68,19 +68,49 @@ class NevergradOptimizer(Optimizer):
         self.optim = optimizerlib.registry[method](instrumentation=self.instrum, budget=10000)
 
     def ask(self, n_samples):
-        candidates, parameters = [], []
+        self.candidates, parameters = [], []
 
         for _ in range(n_samples):
             cand = self.optim.ask()
-            candidates.append(cand)
+            self.candidates.append(cand)
             parameters.append(list(cand.args))
 
-        return candidates, parameters
+        return parameters
 
-    def tell(self, candidates, errors):
-        for i, candidate in enumerate(candidates):
+    def tell(self, parameters, errors):
+        # TODO: check for mapping of parameters to candidates here
+        for i, candidate in enumerate(self.candidates):
             self.optim.tell(candidate, errors[i])
 
     def recommend(self):
         # TODO: check on possible parametrs
         return self.optim.provide_recommendation()
+
+
+
+class SkoptOptimizer(Optimizer):
+
+    def __init__(self,  parameter_names, bounds, method='gp'):
+        super(Optimizer, self).__init__()
+
+        instruments = []
+        for i, name in enumerate(parameter_names):
+            vars()[name] = Real(*bounds[i])
+            instruments.append(vars()[name])
+
+        self.optimizer = skoptOptimizer(
+            dimensions=instruments,
+            random_state=1,
+            base_estimator=method
+        )
+
+    def ask(self, n_samples):
+        return self.optimizer.ask(n_points=n_samples)
+
+    def tell(self, parameters, errors):
+        self.optimizer.tell(parameters, errors.tolist());
+
+    def recommend(self):
+        xi = self.optimizer.Xi
+        yii = array(self.optimizer.yi)
+        return xi[yii.argmin()]

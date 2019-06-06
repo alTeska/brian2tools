@@ -1,7 +1,5 @@
 from brian2 import *
 from brian2tools import *
-from skopt import Optimizer
-from skopt.space import Real
 
 
 # create input and output
@@ -18,15 +16,9 @@ model = Equations('''
     ''')
 
 # setup the skopt optimizer
-optimizer = Optimizer(
-    dimensions=[Real(-5.0, 5.0), Real(0.0, 10.0)],
-    random_state=1,
-    base_estimator='gp'
-)
+skopt_opt = SkoptOptimizer(bounds=[[-5,5],[0,10]], parameter_names=['g', 'E'])
 
-
-parameters = optimizer.ask(n_points=10)
-
+parameters = skopt_opt.ask(n_samples=10)
 
 # pass parameters to the NeuronGroup
 errors = fit_traces_ask_tell(model = model, input_var = 'v', output_var = 'I',\
@@ -35,13 +27,11 @@ errors = fit_traces_ask_tell(model = model, input_var = 'v', output_var = 'I',\
 
 
 # give information to the optimizer
-optimizer.tell(parameters, errors.tolist());
+skopt_opt.tell(parameters, errors)
+ans = skopt_opt.recommend() 
 
-xi = optimizer.Xi
-yii = np.array(optimizer.yi)
+# show answers
+for n in zip(parameters, errors):
+    print(n)
 
-# print the parameters, errors and result
-for d in zip(parameters, errors):
-    print(d)
-
-print(xi[yii.argmin()])
+print(ans)
