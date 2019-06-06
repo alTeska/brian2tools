@@ -1,5 +1,6 @@
 import abc
 from numpy import array
+from functools import reduce
 
 from nevergrad.optimization import optimizerlib, registry
 from nevergrad import instrumentation as inst
@@ -54,7 +55,7 @@ class NevergradOptimizer(Optimizer):
         super(Optimizer, self).__init__()
 
         if method not in list(registry.keys()):
-            raise AssertionError('Unknown to Nevergrad optimizatino method: '+  method)
+            raise AssertionError('Unknown to Nevergrad optimization method: '+ method)
 
         # TODO: bounds/input_var as input from fit_traces_ask_tell
         # check if input var and bounds appropiate size/type
@@ -65,7 +66,8 @@ class NevergradOptimizer(Optimizer):
             instruments.append(vars()[name])
 
         self.instrum = inst.Instrumentation(*instruments)
-        self.optim = optimizerlib.registry[method](instrumentation=self.instrum, budget=10000)
+        self.optim = optimizerlib.registry[method](instrumentation=self.instrum,
+                                                   budget=10000)
 
     def ask(self, n_samples):
         self.candidates, parameters = [], []
@@ -78,7 +80,10 @@ class NevergradOptimizer(Optimizer):
         return parameters
 
     def tell(self, parameters, errors):
-        # TODO: check for mapping of parameters to candidates here
+        # TODO: make the comparison more elegant
+        if not (reduce(lambda i, j : i and j, map(lambda c, p: list(c.args) == p, self.candidates, parameters), True)):
+            raise AssertionError("Parameters and Candidates do not have identical values")
+
         for i, candidate in enumerate(self.candidates):
             self.optim.tell(candidate, errors[i])
 
@@ -89,7 +94,20 @@ class NevergradOptimizer(Optimizer):
 
 
 class SkoptOptimizer(Optimizer):
+    """
+    SkoptOptimizer instance creates all the tools necessary for the user
+    to use it with scikit-optimize library.
 
+    Parameters
+    ----------
+    parameter_names : (list, dict)
+        List/Dict of strings with parameters to be used as instruments.
+    bounds : (list)
+        List with appropiate bounds for each parameter.
+    method : (str), optional
+        The optimization method. POssibilities: "GP", "RF", "ET", "GBRT" or
+        sklearn regressor, default="GP"
+    """
     def __init__(self,  parameter_names, bounds, method='gp'):
         super(Optimizer, self).__init__()
 

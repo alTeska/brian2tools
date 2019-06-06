@@ -20,7 +20,7 @@ model = Equations('''
 n_opt = NevergradOptimizer(method='DE', parameter_names={'E', 'g'},
                            bounds=[[-5, 5], [0, 10]])
 
-candidates, parameters = n_opt.ask(10)
+parameters = n_opt.ask(10)
 
 # pass parameters to the NeuronGroup
 errors = fit_traces_ask_tell(model = model, input_var = 'v', output_var = 'I',\
@@ -30,7 +30,7 @@ errors = fit_traces_ask_tell(model = model, input_var = 'v', output_var = 'I',\
 
 
 # give information to the optimizer
-n_opt.tell(candidates, errors)
+n_opt.tell(parameters, errors)
 
 ans = n_opt.recommend()
 
