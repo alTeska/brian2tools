@@ -1,11 +1,9 @@
 import abc
-from numpy import array, shape
-from functools import reduce
-
-from nevergrad.optimization import optimizerlib, registry
+from numpy import array, shape, all
 from nevergrad import instrumentation as inst
-from skopt import Optimizer as skoptOptimizer
+from nevergrad.optimization import optimizerlib, registry
 from skopt.space import Real
+from skopt import Optimizer as skoptOptimizer
 
 
 class Optimizer(object):
@@ -81,7 +79,7 @@ class NevergradOptimizer(Optimizer):
         return parameters
 
     def tell(self, parameters, errors):
-        if not(parameters == [list(v.args) for v in self.candidates]):
+        if not(all(parameters == [list(v.args) for v in self.candidates])):
             raise AssertionError("Parameters and Candidates don't have identical values")
 
         for i, candidate in enumerate(self.candidates):
