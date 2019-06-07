@@ -26,6 +26,7 @@ def test_init():
 
 
 def test_nevergrad_optimizer():
+    
     for n in np.arange(1, 11):
         par_names, bound = labels[:n], bounds[:n]
         n_samples = np.random.randint(1, 30)

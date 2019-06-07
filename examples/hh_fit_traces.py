@@ -75,6 +75,10 @@ params, fits, error = fit_traces(model = eqs, input_var = 'I', output_var = 'v',
         g_kd = [1*msiemens*cm**-2 * area, 100*msiemens*cm**-2 * area],
         popsize=20)
 
+print('params', params)
+print('fits', fits)
+print('error', error)
+
 # run the model with new/best parameters
 start_scope()
 G = NeuronGroup(1, eqsHH, method='exponential_euler')

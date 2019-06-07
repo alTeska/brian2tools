@@ -18,7 +18,10 @@ def fit_traces_ask_tell(model=None,
                maxiter = None,
                t_start = 0*second,
                method = ('linear', 'exponential_euler', 'euler'),
-               update=None,
+               optimizer=None,
+               method_opt='DE',
+               n_samples=10,
+               n_rounds=1,
                **params):
     '''
     Creates an interface for evaluation of parameters drawn by evolutionary
@@ -41,7 +44,19 @@ def fit_traces_ask_tell(model=None,
     method: string, optional
         Integration method
     t_start: starting time of error measurement.
-    update: list of parameters to evaluate over
+
+    optimizer: ~brian2tools.modelfitting.Optimizer children
+        Child of Optimizer class, specific for each library.
+    method_opt: string
+        Optimization method, to be chosen within each library.
+    n_samples: int
+        Number of parameter samples to be optimized over.
+    n_rounds: int
+        Number of rounds to optimize over. (feedback provided over each round)
+
+    TODO:
+        -tolerance
+        -maximum population
     Returns
     -------
     Errors array for each set of parameters (RMS).
@@ -108,8 +123,7 @@ def fit_traces_ask_tell(model=None,
     # Population size for differential evolution
     # (actually in scipy's algorithm this is popsize * nb params)
 
-    popsize, _ = shape(update)
-    # N = popsize * len(parameter_names)
+    popsize = n_samples
 
     neurons = NeuronGroup(Ntraces * popsize, model, method = method)
     neurons.namespace['input_var'] = input_traces
@@ -127,13 +141,12 @@ def fit_traces_ask_tell(model=None,
     # Store for reinitialization
     store()
 
-    def calc_error(update):
-
+    def calc_error(parameters):
         d = dict()
-        update = array(update)
+        parameters = array(parameters)
 
-        for name, value in zip(parameter_names, update.T):
-            d[name] = (ones((Ntraces, popsize)) * update.T[0]).T.flatten()
+        for name, value in zip(parameter_names, parameters.T):
+            d[name] = (ones((Ntraces, popsize)) * parameters.T[0]).T.flatten()
 
         restore()
         neurons.set_states(d, units=False)
@@ -144,6 +157,12 @@ def fit_traces_ask_tell(model=None,
 
         return array(e)
 
-    errors = calc_error(update)
+    # set up the optimizer
+    optim = optimizer(method=method_opt, parameter_names=parameter_names, bounds=bounds)
+    parameters = optim.ask(n_samples=n_samples)
 
-    return errors
+    errors = calc_error(parameters)
+    optim.tell(parameters, errors)
+    ans = optim.recommend()
+
+    return ans
