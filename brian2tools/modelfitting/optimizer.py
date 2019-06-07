@@ -1,5 +1,5 @@
 import abc
-from numpy import array
+from numpy import array, shape
 from functools import reduce
 
 from nevergrad.optimization import optimizerlib, registry
@@ -21,12 +21,12 @@ class Optimizer(object):
 
     @abc.abstractmethod
     def ask(self, n_samples):
-        """Returns the requested amount of parameter sets"""
+        """Returns the requested number of samples of parameter sets"""
         pass
 
     @abc.abstractmethod
-    def tell(self):
-        """Provides the evaluated errors from parameter sets"""
+    def tell(self, parameters, errors):
+        """Provides the evaluated errors from parameter sets to optimizer"""
         pass
 
     @abc.abstractmethod
@@ -55,10 +55,12 @@ class NevergradOptimizer(Optimizer):
         super(Optimizer, self).__init__()
 
         if method not in list(registry.keys()):
-            raise AssertionError('Unknown to Nevergrad optimization method: '+ method)
+            raise AssertionError("Unknown to Nevergrad optimization method:"+ method)
 
-        # TODO: bounds/input_var as input from fit_traces_ask_tell
         # check if input var and bounds appropiate size/type
+        print(len(parameter_names), shape(bounds)[1])
+        if not (len(parameter_names) == shape(bounds)[0]):
+            raise AssertionError("You need to specify bounds for each of the parameters")
 
         instruments = []
         for i, name in enumerate(parameter_names):
@@ -80,9 +82,8 @@ class NevergradOptimizer(Optimizer):
         return parameters
 
     def tell(self, parameters, errors):
-        # TODO: make the comparison more elegant
-        if not (reduce(lambda i, j : i and j, map(lambda c, p: list(c.args) == p, self.candidates, parameters), True)):
-            raise AssertionError("Parameters and Candidates do not have identical values")
+        if not(parameters == [list(v.args) for v in self.candidates]):
+            raise AssertionError("Parameters and Candidates don't have identical values")
 
         for i, candidate in enumerate(self.candidates):
             self.optim.tell(candidate, errors[i])
@@ -108,8 +109,12 @@ class SkoptOptimizer(Optimizer):
         The optimization method. POssibilities: "GP", "RF", "ET", "GBRT" or
         sklearn regressor, default="GP"
     """
-    def __init__(self,  parameter_names, bounds, method='gp'):
+    def __init__(self,  parameter_names, bounds, method='GP'):
         super(Optimizer, self).__init__()
+
+        # TODO: make this more robust
+        if method.upper() not in ["GP", "RF", "ET", "GBRT"]:
+            raise Warning('Unknown to skopt optimization method:'+ method)
 
         instruments = []
         for i, name in enumerate(parameter_names):

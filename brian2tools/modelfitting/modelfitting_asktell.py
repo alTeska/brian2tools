@@ -60,7 +60,6 @@ def fit_traces_ask_tell(model=None,
     bounds = []
     for name in parameter_names:
         bounds.append(params[name])# Check parameter names
-    print('bounds', bounds)
 
     # dt must be set
     if dt is None:
