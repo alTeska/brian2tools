@@ -55,6 +55,8 @@ class NevergradOptimizer(Optimizer):
         if not (len(parameter_names) == shape(bounds)[0]):
             raise AssertionError("You need to specify bounds for each of the parameters")
 
+        self.parameter_names = parameter_names
+
         if method not in list(registry.keys()):
             raise AssertionError("Unknown to Nevergrad optimization method:"+ method)
 
@@ -86,8 +88,8 @@ class NevergradOptimizer(Optimizer):
             self.optim.tell(candidate, errors[i])
 
     def recommend(self):
-        # TODO: check on possible parametrs
-        return self.optim.provide_recommendation()
+        res = self.optim.provide_recommendation()
+        return res.args
 
 
 
@@ -103,7 +105,7 @@ class SkoptOptimizer(Optimizer):
     bounds : (list)
         List with appropiate bounds for each parameter.
     method : (str), optional
-        The optimization method. POssibilities: "GP", "RF", "ET", "GBRT" or
+        The optimization method. Possibilities: "GP", "RF", "ET", "GBRT" or
         sklearn regressor, default="GP"
     """
     def __init__(self,  parameter_names, bounds, method='GP'):
@@ -111,6 +113,8 @@ class SkoptOptimizer(Optimizer):
 
         if not (len(parameter_names) == shape(bounds)[0]):
             raise AssertionError("You need to specify bounds for each of the parameters")
+
+        self.parameter_names = parameter_names
 
         # TODO: make this more robust
         if method.upper() not in ["GP", "RF", "ET", "GBRT"]:

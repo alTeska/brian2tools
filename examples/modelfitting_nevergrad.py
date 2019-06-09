@@ -19,31 +19,10 @@ model = Equations('''
     E : volt (constant)
     ''')
 
-# setup the nevergrad optimizer
-# arg1 = inst.var.Array(1).bounded(-5, 5).asscalar()
-# arg2 = inst.var.Array(1).bounded(0, 10).asscalar()
-# instrum = inst.Instrumentation(arg1, arg2)
-# optim = optimizerlib.registry['DE'](instrumentation=instrum, budget=10000)
-#
-# for _ in range(10):
-#     cand = optim.ask()
-#     candidates.append(cand)
-#     parameters.append(list(cand.args))
-#
-
 # pass parameters to the NeuronGroup
-ans = fit_traces_ask_tell(model = model, input_var = 'v', output_var = 'I',\
-                            input = input_traces, output = output_traces, dt = 0.1*ms,
-                            g = [1*nS, 30*nS], E = [-20*mV,100*mV],
-                            optimizer=NevergradOptimizer, method_opt='DE')
-                            # optimizer=SkoptOptimizer, method_opt='gp')
+res, error = fit_traces_ask_tell(model=model, input_var='v', output_var='I',
+                                 input=input_traces, output=output_traces, dt=0.1*ms,
+                                 g=[1*nS, 30*nS], E=[-20*mV,100*mV],
+                                 optimizer=NevergradOptimizer, method_opt='DE')
 
-# give information to the optimizer
-# for i, candidate in enumerate(candidates):
-#     value = errors[i]
-#     optim.tell(candidate, value)
-#
-#     print(candidate, value)
-#
-# ans = optim.provide_recommendation()
-# print(list(ans.args))
+print(res, error)

@@ -10,9 +10,9 @@ from brian2tools import Optimizer, NevergradOptimizer, SkoptOptimizer
 
 
 labels = ["".join([choice(digits + ascii_lowercase)
-          for i in range(2)]) for j in range(10)]
-bounds = np.zeros((10, 2))
-bounds[:, 1] = np.arange(1, 11, 1.)
+          for i in range(2)]) for j in range(5)]
+bounds = np.zeros((5, 2))
+bounds[:, 1] = np.arange(1, 6, 1.)
 
 
 def test_init():
@@ -26,8 +26,8 @@ def test_init():
 
 
 def test_nevergrad_optimizer():
-    
-    for n in np.arange(1, 11):
+
+    for n in np.arange(1, 6):
         par_names, bound = labels[:n], bounds[:n]
         n_samples = np.random.randint(1, 30)
 
@@ -45,12 +45,12 @@ def test_nevergrad_optimizer():
 
         ans = n_opt.recommend()
         er_min = (errors).argmin()
-        assert params[er_min] == list(ans.args), "Optimizer didn't return the minimal value"
+        assert params[er_min] == list(ans), "Optimizer didn't return the minimal value"
 
 
 def test_skopt_optimizer():
 
-    for n in np.arange(1, 11):
+    for n in np.arange(1, 6):
         par_names, bound = labels[:n], bounds[:n]
         n_samples = np.random.randint(1, 30)
 
@@ -76,10 +76,10 @@ def test_skopt_optimizer():
 #     sk_opt = []
 #     labels = ["".join([choice(digits + ascii_lowercase) for i in range(2)]) for j in range(10)]
 #
-#     bounds = np.zeros((10,2))
-#     bounds[:, 1] = np.arange(1,11,1.)
+#     bounds = np.zeros((5,2))
+#     bounds[:, 1] = np.arange(1,6,1.)
 #
-#     for n in np.arange(1,11):
+#     for n in np.arange(1,6):
 #         par_names, bound = labels[:n], bounds[:n]
 #         sk_opt.append(SkoptOptimizer(bounds=bound, parameter_names=par_names))
 #

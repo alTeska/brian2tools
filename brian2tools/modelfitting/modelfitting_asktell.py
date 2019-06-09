@@ -1,4 +1,4 @@
-from numpy import mean, ones, array, shape
+from numpy import mean, ones, array, shape, where
 from brian2.equations.equations import (DIFFERENTIAL_EQUATION, Equations,
                                         SingleEquation, PARAMETER)
 from brian2.input import TimedArray
@@ -56,7 +56,7 @@ def fit_traces_ask_tell(model=None,
 
     TODO:
         -tolerance
-        -maximum population
+        -maximum populationte
     Returns
     -------
     Errors array for each set of parameters (RMS).
@@ -152,10 +152,10 @@ def fit_traces_ask_tell(model=None,
         neurons.set_states(d, units=False)
         run(duration, namespace = {})
 
-        e = neurons.total_error/int((duration-t_start)/defaultclock.dt)
-        e = mean(e.reshape((popsize, Ntraces)),axis=1)
+        err = neurons.total_error/int((duration-t_start)/defaultclock.dt)
+        err = mean(err.reshape((popsize, Ntraces)),axis=1)
 
-        return array(e)
+        return array(err)
 
     # set up the optimizer
     optim = optimizer(method=method_opt, parameter_names=parameter_names, bounds=bounds)
@@ -163,6 +163,17 @@ def fit_traces_ask_tell(model=None,
 
     errors = calc_error(parameters)
     optim.tell(parameters, errors)
-    ans = optim.recommend()
+    res = optim.recommend()
 
-    return ans
+    resdict = dict()
+    for name, value in zip(parameter_names, res):
+        resdict[name] = value
+
+    index_param = where(array(parameters) == array(res))
+    ii = index_param[0]
+    error = errors[ii][0]
+
+    print('errors', errors)
+    print('index_param', index_param)
+
+    return resdict, error
