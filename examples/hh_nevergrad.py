@@ -1,11 +1,7 @@
 from brian2 import *
 from brian2tools import *
-from nevergrad.optimization import optimizerlib
-from nevergrad import instrumentation as inst
-
 
 prefs.codegen.target = 'cython'  # weave is not multiprocess-safe!
-candidates, parameters = [], []
 
 # Parameters
 area = 20000*umetre**2
@@ -69,50 +65,28 @@ g_na : siemens (constant)
 g_kd : siemens (constant)
 gl   : siemens (constant)
 ''',
-Cm = 1*ufarad*cm**-2 * area, El = -65*mV, EK = -90*mV, ENa = 50*mV, VT = -63*mV)
-
-# setup the nevergrad optimizer
-arg1 = inst.var.Array(1).bounded(1e-6*siemens*cm**-2 * area, 1e-5*siemens*cm**-2 * area).asscalar()
-arg2 = inst.var.Array(1).bounded(1*msiemens*cm**-2 * area, 200*msiemens*cm**-2 * area).asscalar()
-arg3 = inst.var.Array(1).bounded(1*msiemens*cm**-2 * area, 100*msiemens*cm**-2 * area).asscalar()
-instrum = inst.Instrumentation(arg1, arg2, arg3)
-optim = optimizerlib.registry['DE'](instrumentation=instrum, num_workers=100)
-
-for _ in range(10):
-    cand = optim.ask()
-    candidates.append(cand)
-    parameters.append(list(cand.args))
-
+Cm=1*ufarad*cm**-2 * area, El=-65*mV, EK=-90*mV, ENa=50*mV, VT=-63*mV)
 
 
 # pass parameters to the NeuronGroup
-errors = fit_traces_ask_tell(model = eqs, input_var = 'I', output_var = 'v',\
-        input = inp_trace * nA, output = out_trace*mV, dt = dt,
-        gl = [1e-5*siemens*cm**-2 * area, 1e-6*siemens*cm**-2 * area],
-        g_na = [1*msiemens*cm**-2 * area, 200*msiemens*cm**-2 * area],
-        g_kd = [1*msiemens*cm**-2 * area, 100*msiemens*cm**-2 * area],
-        update=parameters)
+res, error = fit_traces_ask_tell(model=eqs, input_var='I', output_var='v',\
+                                 input=inp_trace * nA, output=out_trace*mV, dt=dt,
+                                 gl=[1e-6*siemens*cm**-2 * area, 1e-5*siemens*cm**-2 * area],
+                                 g_na=[1*msiemens*cm**-2 * area, 200*msiemens*cm**-2 * area],
+                                 g_kd=[1*msiemens*cm**-2 * area, 100*msiemens*cm**-2 * area],
+                                 optimizer=NevergradOptimizer, method_opt='DE')
 
 
 # give information to the optimizer
-for i, candidate in enumerate(candidates):
-    value = errors[i]
-    optim.tell(candidate, value)
+print('correct:', params_correct, '\n output:', res)
+print('error', error)
 
-    print(candidate, value)
-
-ans = optim.provide_recommendation()
-print('correct:', params_correct, '\n output:', ans.args)
 
 # visualization of the results
-params = {'gl': ans.args[0],
-          'g_na': ans.args[1],
-          'g_kd': ans.args[2]}
-
 start_scope()
 G = NeuronGroup(1, eqsHH, method='exponential_euler')
 G.v = El
-G.set_states(params, units=False)
+G.set_states(res, units=False)
 mon = StateMonitor(G, 'v', record=0)
 run(20*ms)
 

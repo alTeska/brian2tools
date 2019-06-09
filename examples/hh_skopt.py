@@ -1,13 +1,8 @@
 from brian2 import *
 from brian2tools import *
-from skopt import Optimizer
-from skopt.space import Real
-from sklearn.externals.joblib import Parallel, delayed
-
 
 
 prefs.codegen.target = 'cython'  # weave is not multiprocess-safe!
-candidates, parameters = [], []
 
 # Parameters
 area = 20000*umetre**2
@@ -71,51 +66,26 @@ g_na : siemens (constant)
 g_kd : siemens (constant)
 gl   : siemens (constant)
 ''',
-Cm = 1*ufarad*cm**-2 * area, El = -65*mV, EK = -90*mV, ENa = 50*mV, VT = -63*mV)
+Cm=1*ufarad*cm**-2 * area, El=-65*mV, EK=-90*mV, ENa=50*mV, VT=-63*mV)
 
-# setup the nevergrad optimizer
-optimizer = Optimizer(
-    dimensions=[Real(200*1e-12, 2*1e-9),
-                Real(200*1e-9, 40*1e-6),
-                Real(200*1e-9, 20*1e-6)],
-    random_state=1,
-    base_estimator='gp'
-)
-
-parameters = optimizer.ask(n_points=10)
 
 # pass parameters to the NeuronGroup
-errors = fit_traces_ask_tell(model = eqs, input_var = 'I', output_var = 'v',\
-        input = inp_trace * nA, output = out_trace*mV, dt = dt,
-        gl = [1e-5*siemens*cm**-2 * area, 1e-6*siemens*cm**-2 * area],
-        g_na = [1*msiemens*cm**-2 * area, 200*msiemens*cm**-2 * area],
-        g_kd = [1*msiemens*cm**-2 * area, 100*msiemens*cm**-2 * area],
-        update=parameters)
+res, error = fit_traces_ask_tell(model=eqs, input_var='I', output_var='v',
+                             input=inp_trace * nA, output=out_trace*mV, dt=dt,
+                             gl=[1e-6*siemens*cm**-2 * area, 1e-5*siemens*cm**-2 * area],
+                             g_na=[1*msiemens*cm**-2 * area, 200*msiemens*cm**-2 * area],
+                             g_kd=[1*msiemens*cm**-2 * area, 100*msiemens*cm**-2 * area],
+                             optimizer=SkoptOptimizer, method_opt='gp')
 
 
-# give information to the optimizer
-optimizer.tell(parameters, errors.tolist());
 
-xi = optimizer.Xi
-yii = np.array(optimizer.yi)
-
-# print the parameters, errors and result
-for d in zip(parameters, errors):
-    print(d)
-
-ans = xi[yii.argmin()]
-
-print('correct:', params_correct, '\n output:', ans)
-
-# visualization of the results
-params = {'gl': ans[0],
-          'g_na': ans[1],
-          'g_kd': ans[2]}
+print('correct:', params_correct, '\n output:', res)
+print('error', error)
 
 start_scope()
 G = NeuronGroup(1, eqsHH, method='exponential_euler')
 G.v = El
-G.set_states(params, units=False)
+G.set_states(res, units=False)
 mon = StateMonitor(G, 'v', record=0)
 run(20*ms)
 
