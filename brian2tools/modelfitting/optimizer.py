@@ -1,9 +1,10 @@
 import abc
 from numpy import array, shape, all
-from nevergrad import instrumentation as inst
-from nevergrad.optimization import optimizerlib, registry
 from skopt.space import Real
 from skopt import Optimizer as skoptOptimizer
+from nevergrad import instrumentation as inst
+from nevergrad.optimization import optimizerlib, registry
+from brian2 import asarray
 
 
 class Optimizer(object):
@@ -121,9 +122,10 @@ class SkoptOptimizer(Optimizer):
             raise Warning('Unknown to skopt optimization method: {}, you have\
                            to provide a regressor'.format(method))
 
+        # bounds = asarray(bounds)
         instruments = []
         for i, name in enumerate(parameter_names):
-            vars()[name] = Real(*bounds[i])
+            vars()[name] = Real(*asarray(bounds[i]))
             instruments.append(vars()[name])
 
         self.optim = skoptOptimizer(

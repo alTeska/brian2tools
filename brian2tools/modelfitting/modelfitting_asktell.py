@@ -157,14 +157,17 @@ def fit_traces_ask_tell(model=None,
 
         return array(err)
 
-    # set up the optimizer
+    # set up the optimizer and get recommendation
     optim = optimizer(method=method_opt, parameter_names=parameter_names, bounds=bounds)
+
+    # TODO: for _ in n_rounds
     parameters = optim.ask(n_samples=n_samples)
 
     errors = calc_error(parameters)
     optim.tell(parameters, errors)
     res = optim.recommend()
 
+    # create output variables
     resdict = dict()
     for name, value in zip(parameter_names, res):
         resdict[name] = value
@@ -172,8 +175,5 @@ def fit_traces_ask_tell(model=None,
     index_param = where(array(parameters) == array(res))
     ii = index_param[0]
     error = errors[ii][0]
-
-    print('errors', errors)
-    print('index_param', index_param)
 
     return resdict, error

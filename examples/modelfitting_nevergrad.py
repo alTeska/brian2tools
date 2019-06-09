@@ -1,10 +1,6 @@
 from brian2 import *
 from brian2tools import *
-from nevergrad.optimization import optimizerlib
-from nevergrad import instrumentation as inst
 
-
-candidates, parameters = [], []
 
 # create input and output
 input_traces = zeros((10,5))*volt
