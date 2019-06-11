@@ -162,13 +162,12 @@ def fit_traces_standalone(model=None,
     neurons.run_regularly(state_update_code, when='groups')
 
 
-    # Initialize the parameters
+    # Initialize the values
     params_init = dict()
     for name in parameter_names:
         params_init[name] = initialize_parameter(neurons.__getattr__(name),
-        ones((Ntraces, n_samples)))
+                                                 ones((Ntraces, n_samples)))
 
-    # TODO: empty run fix
     run(duration, namespace={})
 
     def calc_error(parameters):
@@ -177,7 +176,7 @@ def fit_traces_standalone(model=None,
         for name, value in zip(parameter_names, parameters.T):
             d[name] = (ones((Ntraces, n_samples)) * value[0]).T.flatten()
 
-        # restore()
+        set_states(params_init, d)
         run_again()
 
         err = neurons.total_error/int((duration-t_start)/defaultclock.dt)
