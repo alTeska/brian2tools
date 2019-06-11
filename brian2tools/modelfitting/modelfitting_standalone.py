@@ -1,15 +1,40 @@
-from numpy import mean, ones, array, where
+import os
+from numpy import mean, ones, array, where, atleast_1d
 from brian2.equations.equations import (DIFFERENTIAL_EQUATION, Equations,
                                         SingleEquation, PARAMETER)
 from brian2.input import TimedArray
 from brian2 import NeuronGroup, store, restore, run, defaultclock, second
 from brian2.stateupdaters.base import StateUpdateMethod
+from brian2 import set_device, device
 
 
-__all__ = ['fit_traces_ask_tell']
+__all__ = ['fit_traces_standalone']
+
+def initialize_parameter(variableview, value):
+    variable = variableview.variable
+    array_name = device.get_array_name(variable)
+    static_array_name = device.static_array(array_name, value)
+    device.main_queue.append(('set_by_array', (array_name,
+                                               static_array_name,
+                                               False)))
+    return static_array_name
 
 
-def fit_traces_ask_tell(model=None,
+def set_parameter_value(identifier, value):
+    atleast_1d(value).tofile(os.path.join(device.project_dir,
+                                          'static_arrays',
+                                          identifier))
+
+def run_again():
+    device.run(device.project_dir, with_output=False, run_args=[])
+
+def set_states(init_dict, values):
+    # TODO: add a param checker
+    for obj_name, obj_values in values.items():
+        set_parameter_value(init_dict[obj_name], obj_values)
+
+
+def fit_traces_standalone(model=None,
                         input_var=None,
                         input=None,
                         output_var=None,
@@ -62,6 +87,8 @@ def fit_traces_ask_tell(model=None,
     -------
     Errors array for each set of parameters (RMS).
     '''
+    set_device('cpp_standalone', directory='parallel', clean=False)
+
 
     parameter_names = model.parameter_names
 
@@ -87,7 +114,7 @@ def fit_traces_ask_tell(model=None,
         raise Exception("%s is not an identifier in the model" % input_var)
 
     Nsteps, Ntraces = input.shape
-    duration = Nsteps*dt
+    duration = Nsteps * dt
     # Check output variable
     if output_var not in model.names:
         raise Exception("%s is not a model variable" % output_var)
@@ -134,29 +161,35 @@ def fit_traces_ask_tell(model=None,
     # Add the code doing the numerical integration
     neurons.run_regularly(state_update_code, when='groups')
 
-    # Store for reinitialization
-    store()
+
+    # Initialize the parameters
+    params_init = dict()
+    for name in parameter_names:
+        params_init[name] = initialize_parameter(neurons.__getattr__(name),
+        ones((Ntraces, n_samples)))
+
+    # TODO: empty run fix
+    run(duration, namespace={})
 
     def calc_error(parameters):
-        d = dict()
         parameters = array(parameters)
-
+        d = dict()
         for name, value in zip(parameter_names, parameters.T):
-            d[name] = (ones((Ntraces, n_samples)) * values[0]).T.flatten()
+            d[name] = (ones((Ntraces, n_samples)) * value[0]).T.flatten()
 
-        print(d)
-        restore()
-        neurons.set_states(d, units=False)
-        run(duration, namespace={})
+        # restore()
+        run_again()
 
         err = neurons.total_error/int((duration-t_start)/defaultclock.dt)
         err = mean(err.reshape((n_samples, Ntraces)), axis=1)
 
         return array(err)
 
+
     # set up the optimizer and get recommendation
     optim = optimizer(method=method_opt, parameter_names=parameter_names,
                       bounds=bounds, **kwds_opt)
+
 
     for _ in range(n_rounds):
         parameters = optim.ask(n_samples=n_samples)
