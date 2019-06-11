@@ -48,9 +48,15 @@ class NevergradOptimizer(Optimizer):
     method : (str), optional
         The optimization method. By default differential evolution, can be
         chosen from any method in Nevergrad registry
+
+    TODO:
+    budget: int/None
+        number of allowed evaluations
+    num_workers: int
+        number of evaluations which will be run in parallel at once
     """
 
-    def __init__(self,  parameter_names, bounds, method='DE'):
+    def __init__(self,  parameter_names, bounds, method='DE', popsize=30, budget=300, **kwds):
         super(Optimizer, self).__init__()
 
         if not (len(parameter_names) == shape(bounds)[0]):
@@ -61,7 +67,6 @@ class NevergradOptimizer(Optimizer):
         if method not in list(registry.keys()):
             raise AssertionError("Unknown to Nevergrad optimization method:"+ method)
 
-
         instruments = []
         for i, name in enumerate(parameter_names):
             vars()[name] = inst.var.Array(1).bounded(*bounds[i]).asscalar()
@@ -69,7 +74,10 @@ class NevergradOptimizer(Optimizer):
 
         self.instrum = inst.Instrumentation(*instruments)
         self.optim = optimizerlib.registry[method](instrumentation=self.instrum,
-                                                   budget=10000)
+                                                   budget=budget, **kwds)
+
+
+        self.optim._llambda = popsize  # TODO: more elegant way
 
     def ask(self, n_samples):
         self.candidates, parameters = [], []
@@ -108,8 +116,12 @@ class SkoptOptimizer(Optimizer):
     method : (str), optional
         The optimization method. Possibilities: "GP", "RF", "ET", "GBRT" or
         sklearn regressor, default="GP"
+
+    TODO:
+    n_calls [int, default=100]:
+        Number of calls to `func`.
     """
-    def __init__(self,  parameter_names, bounds, method='GP'):
+    def __init__(self,  parameter_names, bounds, method='GP', **kwds):
         super(Optimizer, self).__init__()
 
         if not (len(parameter_names) == shape(bounds)[0]):
@@ -131,7 +143,8 @@ class SkoptOptimizer(Optimizer):
         self.optim = skoptOptimizer(
             dimensions=instruments,
             random_state=1,
-            base_estimator=method
+            base_estimator=method,
+            **kwds
         )
 
     def ask(self, n_samples):
