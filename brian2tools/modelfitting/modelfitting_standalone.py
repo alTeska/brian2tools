@@ -1,12 +1,8 @@
 import os
 from numpy import mean, ones, array, where, atleast_1d
-from brian2.equations.equations import (DIFFERENTIAL_EQUATION, Equations,
-                                        SingleEquation, PARAMETER)
+from brian2 import NeuronGroup, run, defaultclock, second, set_device, device
 from brian2.input import TimedArray
-from brian2 import NeuronGroup, store, restore, run, defaultclock, second
-from brian2.stateupdaters.base import StateUpdateMethod
-from brian2 import set_device, device
-
+from brian2.equations.equations import Equations
 
 __all__ = ['fit_traces_standalone']
 
@@ -121,21 +117,6 @@ def fit_traces_standalone(model=None,
     if output.shape != input.shape:
         raise Exception("Input and output must have the same size")
 
-    # This only works because the equations are completely self-contained
-    # TODO: This will not work like this for models with refractoriness
-    state_update_code = StateUpdateMethod.apply_stateupdater(model, {},
-                                                             method=method)
-    # Remove all differential equations from the model (they will be updated
-    # explicitly)
-    model_without_diffeq = Equations([eq for eq in model.ordered
-                                      if eq.type != DIFFERENTIAL_EQUATION])
-    # Add a parameter for each differential equation
-    diffeq_params = Equations([SingleEquation(PARAMETER, varname, model.dimensions[varname])
-                               for varname in model.diff_eq_names])
-
-    # Our new model:
-    model = model_without_diffeq + diffeq_params
-
     # Replace input variable by TimedArray
     input_traces = TimedArray(input, dt = dt)
     input_unit = input.dim
@@ -158,10 +139,6 @@ def fit_traces_standalone(model=None,
     neurons.run_regularly('total_error +=  (' + output_var + '-output_var(t,i % Ntraces))**2 * int(t>=t_start)',
                           when='end')
 
-    # Add the code doing the numerical integration
-    neurons.run_regularly(state_update_code, when='groups')
-
-
     # Initialize the values
     params_init = dict()
     for name in parameter_names:
@@ -183,7 +160,6 @@ def fit_traces_standalone(model=None,
         err = mean(err.reshape((n_samples, Ntraces)), axis=1)
 
         return array(err)
-
 
     # set up the optimizer and get recommendation
     optim = optimizer(method=method_opt, parameter_names=parameter_names,
