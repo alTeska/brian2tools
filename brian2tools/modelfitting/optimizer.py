@@ -14,8 +14,16 @@ class Optimizer(object):
     fit_traces.
     """
     __metaclass__ = abc.ABCMeta
-    def __init__(self, parameter_names, bounds, method, **kwds):
-        """Initialize the given optimization method and bounded arguments"""
+    def __init__(self, method, **kwds):
+        """Initialize the given optimizator with method and its specific arguments"""
+        pass
+
+    def initialize(self, parameter_names, **params):
+        """
+        Initialize the instrumentation for the optimization, based on
+        parameters, creates bounds for variables and attaches them to the
+        optimizer
+        """
         pass
 
     @abc.abstractmethod
@@ -56,28 +64,41 @@ class NevergradOptimizer(Optimizer):
         number of evaluations which will be run in parallel at once
     """
 
-    def __init__(self,  parameter_names, bounds, method='DE', popsize=30, budget=300, **kwds):
+    def __init__(self,  method='DE', popsize=30, **kwds):
         super(Optimizer, self).__init__()
 
-        if not (len(parameter_names) == shape(bounds)[0]):
-            raise AssertionError("You need to specify bounds for each of the parameters")
-
-        self.parameter_names = parameter_names
-
         if method not in list(registry.keys()):
-            raise AssertionError("Unknown to Nevergrad optimization method:"+ method)
+            raise AssertionError("Unknown to Nevergrad optimization method:"
+                                + method)
+
+        self.method = method
+        self.popsize = popsize
+        self.kwds = kwds
+
+    def initialize(self, parameter_names, **params):
+        for param in params.keys():
+            if (param not in parameter_names):
+                raise Exception("Parameter %s must be defined as a parameter \
+                                in the model" % param)
+
+        for param in parameter_names:
+            if (param not in params):
+                raise Exception("Bounds must be set for parameter %s" % param)
+
+        bounds = []
+        for name in parameter_names:
+            bounds.append(params[name])
 
         instruments = []
         for i, name in enumerate(parameter_names):
             vars()[name] = inst.var.Array(1).bounded(*bounds[i]).asscalar()
             instruments.append(vars()[name])
 
-        self.instrum = inst.Instrumentation(*instruments)
-        self.optim = optimizerlib.registry[method](instrumentation=self.instrum,
-                                                   budget=budget, **kwds)
+        instrum = inst.Instrumentation(*instruments)
+        self.optim = optimizerlib.registry[self.method](instrumentation=instrum,
+                                                        **self.kwds)
 
-
-        self.optim._llambda = popsize  # TODO: more elegant way
+        self.optim._llambda = self.popsize  # TODO: more elegant way
 
     def ask(self, n_samples):
         self.candidates, parameters = [], []
@@ -101,7 +122,6 @@ class NevergradOptimizer(Optimizer):
         return res.args
 
 
-
 class SkoptOptimizer(Optimizer):
     """
     SkoptOptimizer instance creates all the tools necessary for the user
@@ -121,30 +141,38 @@ class SkoptOptimizer(Optimizer):
     n_calls [int, default=100]:
         Number of calls to `func`.
     """
-    def __init__(self,  parameter_names, bounds, method='GP', **kwds):
+    def __init__(self, method='GP', **kwds):
         super(Optimizer, self).__init__()
-
-        if not (len(parameter_names) == shape(bounds)[0]):
-            raise AssertionError("You need to specify bounds for each of the parameters")
-
-        self.parameter_names = parameter_names
-
         # TODO: make this more robust
         if method.upper() not in ["GP", "RF", "ET", "GBRT"]:
             raise Warning('Unknown to skopt optimization method: {}, you have\
                            to provide a regressor'.format(method))
 
-        # bounds = asarray(bounds)
+        self.method = method
+        self.kwds = kwds
+
+    def initialize(self, parameter_names, **params):
+        for param in params.keys():
+            if (param not in parameter_names):
+                raise Exception("Parameter %s must be defined as a parameter in \
+                                 the model" % param)
+        for param in parameter_names:
+            if (param not in params):
+                raise Exception("Bounds must be set for parameter %s" % param)
+
+        bounds = []
+        for name in parameter_names:
+            bounds.append(params[name])     # Check parameter name
+
         instruments = []
         for i, name in enumerate(parameter_names):
-            vars()[name] = Real(*asarray(bounds[i]))
+            vars()[name] = Real(*asarray(bounds[i]), transform='normalize')
             instruments.append(vars()[name])
 
         self.optim = skoptOptimizer(
             dimensions=instruments,
-            random_state=1,
-            base_estimator=method,
-            **kwds
+            base_estimator=self.method,
+            **self.kwds
         )
 
     def ask(self, n_samples):

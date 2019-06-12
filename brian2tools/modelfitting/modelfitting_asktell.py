@@ -17,10 +17,8 @@ def fit_traces_ask_tell(model=None,
                         t_start=0*second,
                         method=('linear', 'exponential_euler', 'euler'),
                         optimizer=None,
-                        method_opt='DE',
-                        n_samples=10,
+                        n_samples=9,
                         n_rounds=1,
-                        kwds_opt={},
                         **params):
     '''
     Creates an interface for evaluation of parameters drawn by evolutionary
@@ -45,7 +43,7 @@ def fit_traces_ask_tell(model=None,
     t_start: starting time of error measurement.
 
     optimizer: ~brian2tools.modelfitting.Optimizer children
-        Child of Optimizer class, specific for each library.
+        Pre-initialized child of Optimizer class, specific for each library.
     method_opt: string
         Optimization method, to be chosen within each library.
     n_samples: int
@@ -62,18 +60,6 @@ def fit_traces_ask_tell(model=None,
     '''
 
     parameter_names = model.parameter_names
-
-    for param in params.keys():
-        if (param not in model.parameter_names):
-            raise Exception("Parameter %s must be defined as a parameter in \
-                             the model" % param)
-    for param in model.parameter_names:
-        if (param not in params):
-            raise Exception("Bounds must be set for parameter %s" % param)
-
-    bounds = []
-    for name in parameter_names:
-        bounds.append(params[name])     # Check parameter name
 
     # dt must be set
     if dt is None:
@@ -134,14 +120,13 @@ def fit_traces_ask_tell(model=None,
         return array(err)
 
     # set up the optimizer and get recommendation
-    optim = optimizer(method=method_opt, parameter_names=parameter_names,
-                      bounds=bounds, **kwds_opt)
+    optimizer.initialize(parameter_names, **params)
 
     for _ in range(n_rounds):
-        parameters = optim.ask(n_samples=n_samples)
+        parameters = optimizer.ask(n_samples=n_samples)
         errors = calc_error(parameters)
-        optim.tell(parameters, errors)
-        res = optim.recommend()
+        optimizer.tell(parameters, errors)
+        res = optimizer.recommend()
 
         # create output variables
         resdict = dict()

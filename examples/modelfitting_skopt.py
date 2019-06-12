@@ -15,10 +15,13 @@ model = Equations('''
     E : volt (constant)
     ''')
 
+s_opt = SkoptOptimizer(method='gp', random_state=1)
+
 # pass parameters to the NeuronGroup
 res, error = fit_traces_ask_tell(model=model, input_var='v', output_var='I',
                                  input=input_traces, output=output_traces, dt=0.1*ms,
+                                 optimizer=s_opt,
                                  g=[1*nS, 30*nS], E=[-20*mV,100*mV],
-                                 optimizer=SkoptOptimizer, method_opt='gp')
+                                 )
 
 print(res, error)
