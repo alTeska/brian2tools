@@ -1,109 +1,159 @@
 '''
 Test the optimizer class
 '''
-import pytest
 import numpy as np
-from random import choice
-from string import digits, ascii_lowercase
 from numpy.testing.utils import assert_equal, assert_raises
 from brian2tools import Optimizer, NevergradOptimizer, SkoptOptimizer
 
-
-labels = ["".join([choice(digits + ascii_lowercase)
-          for i in range(2)]) for j in range(5)]
-bounds = np.zeros((5, 2))
-bounds[:, 1] = np.arange(1, 6, 1.)
+from skopt import Optimizer as SOptimizer
+from nevergrad.optimization.base import Optimizer as NOptimzer
 
 
 def test_init():
-    Optimizer(bounds=[[0, 1]], parameter_names={'a'}, method='DE')
+    Optimizer()
+    NevergradOptimizer()
+    SkoptOptimizer()
 
-    NevergradOptimizer(bounds=[[0, 1]], parameter_names={'a'})
-    assert_raises(AssertionError, NevergradOptimizer, bounds=[[0, 1]], parameter_names={'a', 'b'})
+    NevergradOptimizer(method='DE')
+    SkoptOptimizer(method='GP')
 
-    SkoptOptimizer(bounds=[[0, 1]], parameter_names={'a'})
-    assert_raises(AssertionError, SkoptOptimizer, bounds=[[0, 1]], parameter_names={'a', 'b'})
+def test_init_wrong_method():
+    assert_raises(AssertionError, NevergradOptimizer, method='foo')
+    assert_raises(AssertionError, SkoptOptimizer, method='foo')
+
+def test_init_kwds():
+    pass
+
+def test_calc_bounds():
+    opt = Optimizer()
+    assert_raises(Exception, opt.calc_bounds, {'a', 'b'}, a=[1, 2])
+
+    bounds = opt.calc_bounds({'a'}, a=[0, 1])
+    assert_equal(bounds, [[0, 1]])
+
+    bounds = opt.calc_bounds(['a', 'b'], a=[0, 1], b=[2, 3])
+    assert_equal(bounds, [[0, 1], [2, 3]])
+
+def test_initialize_nevergrad():
+    n_opt = NevergradOptimizer()
+    n_opt.initialize({'g'}, g=[1, 30])
+    assert isinstance(n_opt.optim, NOptimzer)
+    assert_equal(n_opt.optim.dimension, 1)
+
+    n_opt.initialize(['g', 'E'], g=[1, 30], E=[2, 20])
+    assert isinstance(n_opt.optim, NOptimzer)
+    assert_equal(n_opt.optim.dimension, 2)
+
+    assert_raises(AssertionError, n_opt.initialize, ['g'], g=[1])
+    assert_raises(AssertionError, n_opt.initialize, ['g'], g=[[1, 2]])
+    assert_raises(Exception, n_opt.initialize, ['g'], g=[1, 2], E=[1, 2])
+    assert_raises(Exception, n_opt.initialize, ['g', 'E'], g=[1, 2])
+
+def test_initialize_skopt():
+    s_opt = SkoptOptimizer()
+    s_opt.initialize({'g'}, g=[1, 30])
+    assert isinstance(s_opt.optim, SOptimizer)
+    assert_equal(len(s_opt.optim.space.dimensions), 1)
+
+    s_opt.initialize({'g', 'E'}, g=[1, 30], E=[2, 20])
+    assert isinstance(s_opt.optim, SOptimizer)
+    assert_equal(len(s_opt.optim.space.dimensions), 2)
+
+    assert_raises(TypeError, s_opt.initialize, ['g'], g=[1])
+    assert_raises(Exception, s_opt.initialize, ['g'], g=[1, 2], E=[1, 2])
+    assert_raises(Exception, s_opt.initialize, ['g', 'E'], g=[1, 2])
+
+def test_ask_nevergrad():
+    n_opt = NevergradOptimizer()
+    n_opt.initialize(['a', 'b', 'c'], a=[0, 1], b=[0, 2], c=[0, 3])
+
+    n_samples = np.random.randint(1, 30)
+    params = n_opt.ask(n_samples)
+    assert_equal(np.shape(params), (n_samples, 3))
+
+    for i in np.arange(0, 3):
+        assert all(np.array(params)[:, i] <= i+1), 'Values in params are bigger than required'
+        assert all(np.array(params)[:, i] >= 0), 'Values in params are smaller than required'
+
+def test_ask_skopt():
+    s_opt = SkoptOptimizer()
+    s_opt.initialize(['a', 'b', 'c'], a=[0, 1], b=[0, 2], c=[0, 3])
+
+    n_samples = np.random.randint(1, 30)
+    params = s_opt.ask(n_samples)
+    assert_equal(np.shape(params), (n_samples, 3))
+
+    for i in np.arange(0, 3):
+        assert all(np.array(params)[:, i] <= i+1), 'Values in params are bigger than required'
+        assert all(np.array(params)[:, i] >= 0), 'Values in params are smaller than required'
 
 
-def test_nevergrad_optimizer():
+def test_tell_nevergrad():
+    n_opt = NevergradOptimizer()
+    n_opt.initialize(['a', 'b', 'c'], a=[0, 1], b=[0, 2], c=[0, 3])
 
-    for n in np.arange(1, 6):
-        par_names, bound = labels[:n], bounds[:n]
-        n_samples = np.random.randint(1, 30)
+    n_samples = np.random.randint(1, 30)
+    params = n_opt.ask(n_samples)
 
-        n_opt = NevergradOptimizer(bounds=bound, parameter_names=par_names)
-        params = n_opt.ask(n_samples)
+    errors = np.random.rand(n_samples)
+    n_opt.tell(params, errors)
+    assert_equal(n_opt.optim.num_tell, n_samples)
 
-        assert_equal(np.shape(params), (n_samples, n))
+def test_tell_skopt():
+    s_opt = SkoptOptimizer()
+    s_opt.initialize(['a', 'b', 'c'], a=[0, 1], b=[0, 2], c=[0, 3])
 
-        for i in np.arange(1, n):
-            assert all(np.array(params)[:,i-1] <= i), 'Values in params are bigger than required'
-            assert all(np.array(params)[:,i-1] >= 0), 'Values in params are smaller than required'
+    n_samples = np.random.randint(1, 30)
+    params = s_opt.ask(n_samples)
 
-        errors = np.random.rand(n_samples)
-        n_opt.tell(params, errors)
-
-        ans = n_opt.recommend()
-        er_min = (errors).argmin()
-        assert params[er_min] == list(ans), "Optimizer didn't return the minimal value"
-
-
-def test_skopt_optimizer():
-
-    for n in np.arange(1, 6):
-        par_names, bound = labels[:n], bounds[:n]
-        n_samples = np.random.randint(1, 30)
-
-        n_opt = SkoptOptimizer(bounds=bound, parameter_names=par_names)
-        params = n_opt.ask(n_samples)
-
-        assert_equal(np.shape(params), (n_samples, n))
-
-        for i in np.arange(1, n):
-            assert all(np.array(params)[:,i-1] <= i), 'Values in params are bigger than required'
-            assert all(np.array(params)[:,i-1] >= 0), 'Values in params are smaller than required'
-
-        errors = np.random.rand(n_samples)
-        n_opt.tell(params, errors)
-
-        ans = n_opt.recommend()
-        er_min = (errors).argmin()
-        assert params[er_min] == ans, "Optimizer didn't return the minimal value"
+    errors = np.random.rand(n_samples)
+    s_opt.tell(params, errors)
+    assert_equal(s_opt.optim.Xi, params)
+    assert_equal(s_opt.optim.yi, errors)
 
 
-# @pytest.fixture
-# def skopt_optimizer():
-#     sk_opt = []
-#     labels = ["".join([choice(digits + ascii_lowercase) for i in range(2)]) for j in range(10)]
-#
-#     bounds = np.zeros((5,2))
-#     bounds[:, 1] = np.arange(1,6,1.)
-#
-#     for n in np.arange(1,6):
-#         par_names, bound = labels[:n], bounds[:n]
-#         sk_opt.append(SkoptOptimizer(bounds=bound, parameter_names=par_names))
-#
-#     # return SkoptOptimizer(bounds=[[0, 1]], parameter_names={'a'})
-#     return sk_opt
+def test_recommend_skopt():
+    s_opt = SkoptOptimizer()
+    s_opt.initialize(['a', 'b', 'c'], a=[0, 1], b=[0, 2], c=[0, 3])
 
-# def test_skopt_ask(skopt_optimizer):
-#     for n, skopt in enumerate(skopt_optimizer):
-#         n_samples = np.random.randint(2, 30)
-#         params = skopt.ask(n_samples)
-#
-#         assert_equal(np.shape(params), (n_samples, n))
-#
-#         for i in np.arange(1, n):
-#             assert all(np.array(params)[:,i-1] <= i), 'Values in params are bigger than required'
-#             assert all(np.array(params)[:,i-1] >= 0), 'Values in params are smaller than required'
+    n_samples = np.random.randint(1, 30)
+    params = s_opt.ask(n_samples)
 
-# def test_skopt_tell(skopt_optimizer):
-#     for n, skopt in enumerate(skopt_optimizer):
-#         n_samples = np.random.randint(1, 30)
-#         params = np.random.rand(n_samples, 2)
-#         errors = np.random.rand(n_samples, 1)
-#         skopt.tell(params, errors)
-#
-#         ans = skopt.recommend()
-#         er_min = errors.argmin()
-#         assert params[er_min] == ans, "Optimizer didn't return the minimal value"
+    errors = np.random.rand(n_samples)
+    s_opt.tell(params, errors)
+
+    ans = s_opt.recommend()
+    er_min = (errors).argmin()
+    assert_equal(params[er_min], list(ans))
+
+def test_recommend_nevergrad():
+    from nevergrad import instrumentation as inst
+    from nevergrad.optimization.base import CandidateMaker
+
+    n_opt = NevergradOptimizer()
+    n_opt.initialize(['a', 'b', 'c'], a=[0, 1], b=[0, 2], c=[0, 3])
+
+    arg1 = inst.var.Array(1).bounded(0, 1).asscalar()
+    arg2 = inst.var.Array(1).bounded(0, 2).asscalar()
+    arg3 = inst.var.Array(1).bounded(0, 3).asscalar()
+    instrum = inst.Instrumentation(arg1, arg2, arg3)
+    CM  = CandidateMaker(instrum)
+
+    # params = n_opt.ask(n_samples)
+    data = np.random.rand(5,3)
+
+    params, candidates = [], []
+    for row in data:
+        print(row)
+        cand = CM.from_data(row)
+        candidates.append(cand)
+        params.append(list(cand.args))
+
+
+    errors = np.random.rand(5)
+    n_opt.candidates = candidates
+    n_opt.tell(params, errors)
+
+    ans = n_opt.recommend()
+    er_min = (errors).argmin()
+    assert_equal(params[er_min], list(ans))
