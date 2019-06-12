@@ -18,6 +18,23 @@ class Optimizer(object):
         """Initialize the given optimizator with method and its specific arguments"""
         pass
 
+    def calc_bounds(self, parameter_names, **params):
+        """Verify and get the provided for parameters bounds"""
+        for param in params.keys():
+            if (param not in parameter_names):
+                raise Exception("Parameter %s must be defined as a parameter in \
+                the model" % param)
+        for param in parameter_names:
+            if (param not in params):
+                raise Exception("Bounds must be set for parameter %s" % param)
+
+        bounds = []
+        for name in parameter_names:
+            bounds.append(params[name])
+
+        return bounds
+
+    @abc.abstractmethod
     def initialize(self, parameter_names, **params):
         """
         Initialize the instrumentation for the optimization, based on
@@ -76,18 +93,7 @@ class NevergradOptimizer(Optimizer):
         self.kwds = kwds
 
     def initialize(self, parameter_names, **params):
-        for param in params.keys():
-            if (param not in parameter_names):
-                raise Exception("Parameter %s must be defined as a parameter \
-                                in the model" % param)
-
-        for param in parameter_names:
-            if (param not in params):
-                raise Exception("Bounds must be set for parameter %s" % param)
-
-        bounds = []
-        for name in parameter_names:
-            bounds.append(params[name])
+        bounds = self.calc_bounds(parameter_names, **params)
 
         instruments = []
         for i, name in enumerate(parameter_names):
@@ -152,17 +158,7 @@ class SkoptOptimizer(Optimizer):
         self.kwds = kwds
 
     def initialize(self, parameter_names, **params):
-        for param in params.keys():
-            if (param not in parameter_names):
-                raise Exception("Parameter %s must be defined as a parameter in \
-                                 the model" % param)
-        for param in parameter_names:
-            if (param not in params):
-                raise Exception("Bounds must be set for parameter %s" % param)
-
-        bounds = []
-        for name in parameter_names:
-            bounds.append(params[name])     # Check parameter name
+        bounds = self.calc_bounds(parameter_names, **params)
 
         instruments = []
         for i, name in enumerate(parameter_names):
