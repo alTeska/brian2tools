@@ -1,10 +1,12 @@
 import abc
-from numpy import array, shape, all
+from numpy import array, all
+from brian2 import asarray
+
 from skopt.space import Real
 from skopt import Optimizer as skoptOptimizer
+from sklearn.base import RegressorMixin
 from nevergrad import instrumentation as inst
 from nevergrad.optimization import optimizerlib, registry
-from brian2 import asarray
 
 
 class Optimizer(object):
@@ -14,22 +16,20 @@ class Optimizer(object):
     fit_traces.
     """
     __metaclass__ = abc.ABCMeta
-    def __init__(self, method, **kwds):
-        """Initialize the given optimizator with method and its specific arguments"""
+
+    def __init__(self, method='DE', **kwds):
+        """Initialize the given optimizator with method and specific arguments"""
         pass
 
     def calc_bounds(self, parameter_names, **params):
         """Verify and get the provided for parameters bounds"""
-        for param in params.keys():
-            if (param not in parameter_names):
-                raise Exception("Parameter %s must be defined as a parameter in \
-                the model" % param)
         for param in parameter_names:
             if (param not in params):
                 raise Exception("Bounds must be set for parameter %s" % param)
 
         bounds = []
         for name in parameter_names:
+            print(name)
             bounds.append(params[name])
 
         return bounds
@@ -86,13 +86,18 @@ class NevergradOptimizer(Optimizer):
 
         if method not in list(registry.keys()):
             raise AssertionError("Unknown to Nevergrad optimization method:"
-                                + method)
+                                 + method)
 
         self.method = method
         self.popsize = popsize
-        self.kwds = kwds
+        self.kwds = kwds  # TODO: check if kwds are a valible arguemnt
 
     def initialize(self, parameter_names, **params):
+        for param in params.keys():
+            if (param not in parameter_names):
+                raise Exception("Parameter %s must be defined as a parameter \
+                                 in the model" % param)
+
         bounds = self.calc_bounds(parameter_names, **params)
 
         instruments = []
@@ -118,7 +123,8 @@ class NevergradOptimizer(Optimizer):
 
     def tell(self, parameters, errors):
         if not(all(parameters == [list(v.args) for v in self.candidates])):
-            raise AssertionError("Parameters and Candidates don't have identical values")
+            raise AssertionError("Parameters and Candidates don't have \
+                                  identical values")
 
         for i, candidate in enumerate(self.candidates):
             self.optim.tell(candidate, errors[i])
@@ -149,15 +155,20 @@ class SkoptOptimizer(Optimizer):
     """
     def __init__(self, method='GP', **kwds):
         super(Optimizer, self).__init__()
-        # TODO: make this more robust
-        if method.upper() not in ["GP", "RF", "ET", "GBRT"]:
-            raise Warning('Unknown to skopt optimization method: {}, you have\
-                           to provide a regressor'.format(method))
+        if not(method.upper() in ["GP", "RF", "ET", "GBRT"] or
+               isinstance(method, RegressorMixin)):
+            raise AssertionError("Provided method: {} is not an skopt \
+                                  optimization or a regressor".format(method))
 
         self.method = method
-        self.kwds = kwds
+        self.kwds = kwds  # TODO: check if kwds are a valible arguemnt
 
     def initialize(self, parameter_names, **params):
+        for param in params.keys():
+            if (param not in parameter_names):
+                raise Exception("Parameter %s must be defined as a parameter \
+                                 in the model" % param)
+
         bounds = self.calc_bounds(parameter_names, **params)
 
         instruments = []
