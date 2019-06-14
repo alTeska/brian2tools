@@ -29,7 +29,6 @@ class Optimizer(object):
 
         bounds = []
         for name in parameter_names:
-            print(name)
             bounds.append(params[name])
 
         return bounds
@@ -74,7 +73,7 @@ class NevergradOptimizer(Optimizer):
         The optimization method. By default differential evolution, can be
         chosen from any method in Nevergrad registry
 
-    TODO:
+    TODO: specify kwds
     budget: int/None
         number of allowed evaluations
     num_workers: int
@@ -149,7 +148,7 @@ class SkoptOptimizer(Optimizer):
         The optimization method. Possibilities: "GP", "RF", "ET", "GBRT" or
         sklearn regressor, default="GP"
 
-    TODO:
+    TODO: specify kwds
     n_calls [int, default=100]:
         Number of calls to `func`.
     """

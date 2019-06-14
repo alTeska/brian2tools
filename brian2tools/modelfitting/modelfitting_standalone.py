@@ -1,10 +1,22 @@
 import os
 from numpy import mean, ones, array, where, atleast_1d
-from brian2 import NeuronGroup, run, defaultclock, second, set_device, device
+from brian2 import (NeuronGroup, run, defaultclock, second,
+                    set_device, device, store, restore, get_device)
+from brian2.devices import RuntimeDevice
+from brian2.devices.cpp_standalone.device import CPPStandaloneDevice
+
 from brian2.input import TimedArray
 from brian2.equations.equations import Equations
 
+
 __all__ = ['fit_traces_standalone']
+
+def make_dic(names, res):
+    resdict = dict()
+    for name, value in zip(names, res):
+        resdict[name] = value
+
+    return resdict
 
 def initialize_parameter(variableview, value):
     variable = variableview.variable
@@ -31,20 +43,18 @@ def set_states(init_dict, values):
 
 
 def fit_traces_standalone(model=None,
-                        input_var=None,
-                        input=None,
-                        output_var=None,
-                        output=None,
-                        dt=None,
-                        maxiter=None,
-                        t_start=0*second,
-                        method=('linear', 'exponential_euler', 'euler'),
-                        optimizer=None,
-                        method_opt='DE',
-                        n_samples=10,
-                        n_rounds=1,
-                        kwds_opt={},
-                        **params):
+                          input_var=None,
+                          input=None,
+                          output_var=None,
+                          output=None,
+                          dt=None,
+                          maxiter=None,
+                          t_start=0*second,
+                          method=('linear', 'exponential_euler', 'euler'),
+                          optimizer=None,
+                          n_samples=10,
+                          n_rounds=1,
+                          **params):
     '''
     Creates an interface for evaluation of parameters drawn by evolutionary
     algorithms (throough ask/tell interfaces).
@@ -83,22 +93,12 @@ def fit_traces_standalone(model=None,
     -------
     Errors array for each set of parameters (RMS).
     '''
-    set_device('cpp_standalone', directory='parallel', clean=False)
+
+    def pick_mode():
+        pass
 
 
     parameter_names = model.parameter_names
-
-    for param in params.keys():
-        if (param not in model.parameter_names):
-            raise Exception("Parameter %s must be defined as a parameter in \
-                             the model" % param)
-    for param in model.parameter_names:
-        if (param not in params):
-            raise Exception("Bounds must be set for parameter %s" % param)
-
-    bounds = []
-    for name in parameter_names:
-        bounds.append(params[name])     # Check parameter name
 
     # dt must be set
     if dt is None:
@@ -140,45 +140,60 @@ def fit_traces_standalone(model=None,
                           when='end')
 
     # Initialize the values
-    params_init = dict()
-    for name in parameter_names:
-        params_init[name] = initialize_parameter(neurons.__getattr__(name),
-                                                 ones((Ntraces, n_samples)))
-
-    run(duration, namespace={})
-
-    def calc_error(parameters):
+    def get_param_dic(parameters):
         parameters = array(parameters)
+
         d = dict()
+
         for name, value in zip(parameter_names, parameters.T):
             d[name] = (ones((Ntraces, n_samples)) * value[0]).T.flatten()
+        return d
 
-        set_states(params_init, d)
-        run_again()
-
+    def calc_error():
         err = neurons.total_error/int((duration-t_start)/defaultclock.dt)
         err = mean(err.reshape((n_samples, Ntraces)), axis=1)
 
         return array(err)
 
-    # set up the optimizer and get recommendation
-    optim = optimizer(method=method_opt, parameter_names=parameter_names,
-                      bounds=bounds, **kwds_opt)
+    # Set up the Optimizer
+    optimizer.initialize(parameter_names, **params)
 
+    if not isinstance(get_device(), CPPStandaloneDevice):
+        store()
 
+    # Run Optimization Loop
     for _ in range(n_rounds):
-        parameters = optim.ask(n_samples=n_samples)
-        errors = calc_error(parameters)
-        optim.tell(parameters, errors)
-        res = optim.recommend()
+        parameters = optimizer.ask(n_samples=n_samples)
+        d = get_param_dic(parameters)
+
+        # if not device.__class__ is CPPStandaloneDevice:
+        if not isinstance(get_device(), CPPStandaloneDevice):
+            print("Runtime")
+            restore()
+            neurons.set_states(d, units=False)
+            run(duration, namespace={})
+
+        elif not device.has_been_run:
+            print('Standalone')
+            params_init = dict()
+            for name in parameter_names:
+                params_init[name] = initialize_parameter(neurons.__getattr__(name),
+                                                         d[name])
+            run(duration, namespace={})
+
+        else:
+            set_states(params_init, d)
+            run_again()
+
+        errors = calc_error()
+
+        optimizer.tell(parameters, errors)
+        res = optimizer.recommend()
 
         # create output variables
-        resdict = dict()
-        for name, value in zip(parameter_names, res):
-            resdict[name] = value
+        resdict = make_dic(parameter_names, res)
 
         index_param = where(array(parameters) == array(res))
-
         ii = index_param[0]
         error = errors[ii][0]
 

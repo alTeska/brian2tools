@@ -17,7 +17,7 @@ def fit_traces_ask_tell(model=None,
                         t_start=0*second,
                         method=('linear', 'exponential_euler', 'euler'),
                         optimizer=None,
-                        n_samples=9,
+                        n_samples=10,
                         n_rounds=1,
                         **params):
     '''

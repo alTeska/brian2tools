@@ -19,8 +19,8 @@ n_opt = NevergradOptimizer(method='DE', popsize=10, budget=300)
 
 # pass parameters to the NeuronGroup
 res, error = fit_traces_ask_tell(model=model, input_var='v', output_var='I',
-                                 input=input_traces, output=output_traces, dt=0.1*ms,
-                                 g=[1*nS, 30*nS], E=[-20*mV,100*mV],
-                                 optimizer=n_opt)
+                                 input=input_traces, output=output_traces,
+                                 dt=0.1*ms, optimizer=n_opt,
+                                 g=[1*nS, 30*nS], E=[-20*mV,100*mV],)
 
 print(res, error)
