@@ -1,7 +1,7 @@
 from brian2 import *
 from brian2tools import *
 
-# set_device('cpp_standalone', directory='parallel', clean=False)
+set_device('cpp_standalone', directory='parallel', clean=False)
 
 # create input and output
 input_traces = zeros((10,5))*volt

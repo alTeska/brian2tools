@@ -27,6 +27,14 @@ def initialize_parameter(variableview, value):
                                                False)))
     return static_array_name
 
+def initialize_neurons(parameter_names, neurons, d):
+    params_init = dict()
+
+    for name in parameter_names:
+        params_init[name] = initialize_parameter(neurons.__getattr__(name),
+                                                 d[name])
+    return params_init
+
 
 def set_parameter_value(identifier, value):
     atleast_1d(value).tofile(os.path.join(device.project_dir,
@@ -94,8 +102,26 @@ def fit_traces_standalone(model=None,
     Errors array for each set of parameters (RMS).
     '''
 
-    def pick_mode():
-        pass
+    if not isinstance(get_device(), CPPStandaloneDevice):
+        print("Runtime")
+
+        def run_neurons(duration, d):
+            restore()
+            neurons.set_states(d, units=False)
+            run(duration, namespace={})
+
+    else:
+        print('Standalone')
+
+        def run_neurons(duration, d):
+            global params_init
+            if not device.has_been_run:
+                params_init = initialize_neurons(parameter_names, neurons, d)
+                run(duration, namespace={})
+
+            else:
+                set_states(params_init, d)
+                run_again()
 
 
     parameter_names = model.parameter_names
@@ -166,25 +192,7 @@ def fit_traces_standalone(model=None,
         parameters = optimizer.ask(n_samples=n_samples)
         d = get_param_dic(parameters)
 
-        # if not device.__class__ is CPPStandaloneDevice:
-        if not isinstance(get_device(), CPPStandaloneDevice):
-            print("Runtime")
-            restore()
-            neurons.set_states(d, units=False)
-            run(duration, namespace={})
-
-        elif not device.has_been_run:
-            print('Standalone')
-            params_init = dict()
-            for name in parameter_names:
-                params_init[name] = initialize_parameter(neurons.__getattr__(name),
-                                                         d[name])
-            run(duration, namespace={})
-
-        else:
-            set_states(params_init, d)
-            run_again()
-
+        run_neurons(duration, d)
         errors = calc_error()
 
         optimizer.tell(parameters, errors)
