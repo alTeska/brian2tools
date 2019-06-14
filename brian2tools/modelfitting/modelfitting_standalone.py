@@ -102,15 +102,7 @@ def fit_traces_standalone(model=None,
     Errors array for each set of parameters (RMS).
     '''
 
-    if not isinstance(get_device(), CPPStandaloneDevice):
-        print("Runtime")
-
-        def run_neurons(duration, d):
-            restore()
-            neurons.set_states(d, units=False)
-            run(duration, namespace={})
-
-    else:
+    if isinstance(get_device(), CPPStandaloneDevice):
         print('Standalone')
 
         def run_neurons(duration, d):
@@ -122,6 +114,13 @@ def fit_traces_standalone(model=None,
             else:
                 set_states(params_init, d)
                 run_again()
+    else:
+        print("Runtime")
+
+        def run_neurons(duration, d):
+            restore()
+            neurons.set_states(d, units=False)
+            run(duration, namespace={})
 
 
     parameter_names = model.parameter_names
