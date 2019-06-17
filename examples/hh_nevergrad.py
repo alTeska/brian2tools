@@ -12,18 +12,22 @@ EK = -90*mV
 ENa = 50*mV
 VT = -63*mV
 
-# Generate a step-current input and an "experimental" voltage trace
 dt = 0.01*ms
-input_current = np.hstack([np.zeros(int(5*ms/dt)), np.ones(int(5*ms/dt)), np.zeros(int(5*ms/dt))])*nA
-print(input_current, input_current)
 
-N, n1 = np.array([input_current]).shape
+# Generate a step-current input and an "experimental" voltage trace
+# input_current = np.hstack([np.zeros(int(5*ms/dt)), np.ones(int(5*ms/dt)), np.zeros(int(5*ms/dt))])*nA
+# print('input_current', input_current)
+# N, n1 = np.array([input_current]).shape
+
+input_current0 = np.hstack([np.zeros(int(5*ms/dt)), np.ones(int(5*ms/dt)), np.zeros(int(5*ms/dt))])*nA
+input_current1 = np.hstack([np.zeros(int(5*ms/dt)), np.ones(int(5*ms/dt))*2, np.zeros(int(5*ms/dt))])*nA
+input_current2 = np.stack((input_current0, input_current1))
+
 params_correct = {'gl': float(5e-5*siemens*cm**-2 * area),
-          'g_na': float(100*msiemens*cm**-2 * area),
-          'g_kd': float(30*msiemens*cm**-2 * area)}
+                  'g_na': float(100*msiemens*cm**-2 * area),
+                  'g_kd': float(30*msiemens*cm**-2 * area)}
 
 defaultclock.dt = dt
-I = TimedArray(input_current, dt=dt)
 
 # The model
 eqsHH = Equations('''
@@ -39,6 +43,8 @@ g_kd : siemens (constant)
 gl   : siemens (constant)
 ''')
 
+I = TimedArray(input_current0, dt=dt)
+
 G = NeuronGroup(1, eqsHH, method='exponential_euler')
 G.v = El
 G.set_states(params_correct, units=False)
@@ -48,10 +54,37 @@ run(20*ms)
 voltage = mon.v[0]/mV
 voltage += np.random.randn(len(voltage))
 
-inp_trace = np.array([input_current])
 
-n0, n1 = inp_trace.shape
-out_trace = np.array([voltage[:n1]])
+inp_trace0 = np.array([input_current0])
+n0, n1 = inp_trace0.shape
+
+out_trace0 = np.array(voltage[:n1])
+
+
+start_scope()
+I = TimedArray(input_current1, dt=dt)
+G = NeuronGroup(1, eqsHH, method='exponential_euler')
+G.v = El
+G.set_states(params_correct, units=False)
+mon = StateMonitor(G, 'v', record=0)
+
+run(20*ms)
+
+voltage = mon.v[0]/mV
+
+voltage += np.random.randn(len(voltage))
+inp_trace1 = np.array([input_current1])
+n0, n1 = inp_trace1.shape
+out_trace1 = np.array(voltage[:n1])
+
+plot(out_trace0)
+plot(out_trace1)
+plt.show()
+
+
+# Generate Proper Input Format for the Problem
+inp_trace = np.concatenate((inp_trace0, inp_trace1))
+out_trace = np.concatenate(([out_trace0], [out_trace1]))
 
 # Model for modelfitting
 eqs = Equations(
