@@ -15,6 +15,7 @@ VT = -63*mV
 # Generate a step-current input and an "experimental" voltage trace
 dt = 0.01*ms
 input_current = np.hstack([np.zeros(int(5*ms/dt)), np.ones(int(5*ms/dt)), np.zeros(int(5*ms/dt))])*nA
+print(input_current, input_current)
 
 N, n1 = np.array([input_current]).shape
 params_correct = {'gl': float(5e-5*siemens*cm**-2 * area),
@@ -69,17 +70,16 @@ gl   : siemens (constant)
 Cm=1*ufarad*cm**-2 * area, El=-65*mV, EK=-90*mV, ENa=50*mV, VT=-63*mV)
 
 
+n_opt = NevergradOptimizer()
 
 
 # pass parameters to the NeuronGroup
-res, error = fit_traces_ask_tell(model=eqs, input_var='I', output_var='v',
-                                 input=inp_trace * nA, output=out_trace*mV, dt=dt,
-                                 gl=[1e-8*siemens*cm**-2 * area, 1e-4*siemens*cm**-2 * area],
-                                 g_na=[1*msiemens*cm**-2 * area, 200*msiemens*cm**-2 * area],
-                                 g_kd=[1*msiemens*cm**-2 * area, 100*msiemens*cm**-2 * area],
-                                 optimizer=NevergradOptimizer, method_opt='DE',
-                                 n_rounds=5, n_samples=50, kwds_opt={'popsize': 50})
-
+res, error = fit_traces_standalone(model=eqs, input_var='I', output_var='v',
+                                   input=inp_trace * nA, output=out_trace*mV, dt=dt,
+                                   gl=[1e-8*siemens*cm**-2 * area, 1e-4*siemens*cm**-2 * area],
+                                   g_na=[1*msiemens*cm**-2 * area, 200*msiemens*cm**-2 * area],
+                                   g_kd=[1*msiemens*cm**-2 * area, 100*msiemens*cm**-2 * area],
+                                   n_rounds=5, n_samples=30, optimizer=n_opt,)
 
 # give information to the optimizer
 print('correct:', params_correct, '\n output:', res)

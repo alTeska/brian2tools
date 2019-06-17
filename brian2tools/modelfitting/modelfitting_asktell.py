@@ -100,6 +100,7 @@ def fit_traces_ask_tell(model=None,
     neurons.run_regularly('total_error +=  (' + output_var + '-output_var(t,i % Ntraces))**2 * int(t>=t_start)',
                           when='end')
 
+
     # Store for reinitialization
     store()
 

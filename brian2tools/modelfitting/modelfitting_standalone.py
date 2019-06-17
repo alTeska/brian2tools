@@ -1,8 +1,7 @@
 import os
-from numpy import mean, ones, array, where, atleast_1d
+from numpy import mean, ones, array, where, atleast_1d, shape
 from brian2 import (NeuronGroup, run, defaultclock, second,
-                    set_device, device, store, restore, get_device)
-from brian2.devices import RuntimeDevice
+                    device, store, restore, get_device, StateMonitor)
 from brian2.devices.cpp_standalone.device import CPPStandaloneDevice
 
 from brian2.input import TimedArray
@@ -11,12 +10,14 @@ from brian2.equations.equations import Equations
 
 __all__ = ['fit_traces_standalone']
 
+
 def make_dic(names, res):
     resdict = dict()
     for name, value in zip(names, res):
         resdict[name] = value
 
     return resdict
+
 
 def initialize_parameter(variableview, value):
     variable = variableview.variable
@@ -26,6 +27,7 @@ def initialize_parameter(variableview, value):
                                                static_array_name,
                                                False)))
     return static_array_name
+
 
 def initialize_neurons(parameter_names, neurons, d):
     params_init = dict()
@@ -41,8 +43,10 @@ def set_parameter_value(identifier, value):
                                           'static_arrays',
                                           identifier))
 
+
 def run_again():
     device.run(device.project_dir, with_output=False, run_args=[])
+
 
 def set_states(init_dict, values):
     # TODO: add a param checker
@@ -105,23 +109,33 @@ def fit_traces_standalone(model=None,
     if isinstance(get_device(), CPPStandaloneDevice):
         print('Standalone')
 
-        def run_neurons(duration, d):
+        def run_neurons(duration, d, var):
+            monitor = StateMonitor(neurons, var, record=True)
+
             global params_init
             if not device.has_been_run:
                 params_init = initialize_neurons(parameter_names, neurons, d)
-                run(duration, namespace={})
+                # run(duration, namespace={})
+                run(duration)
 
             else:
                 set_states(params_init, d)
                 run_again()
+
+            return monitor
+
     else:
         print("Runtime")
 
-        def run_neurons(duration, d):
+        def run_neurons(duration, d, var):
             restore()
             neurons.set_states(d, units=False)
+
+            monitor = StateMonitor(neurons, var, record=True)
+
             run(duration, namespace={})
 
+            return monitor
 
     parameter_names = model.parameter_names
 
@@ -134,35 +148,46 @@ def fit_traces_standalone(model=None,
     if input_var not in model.identifiers:
         raise Exception("%s is not an identifier in the model" % input_var)
 
-    Nsteps, Ntraces = input.shape
-    duration = Nsteps * dt
     # Check output variable
     if output_var not in model.names:
         raise Exception("%s is not a model variable" % output_var)
     if output.shape != input.shape:
         raise Exception("Input and output must have the same size")
 
+    Ntraces, Nsteps = input.shape
+    duration = Nsteps * dt
+
     # Replace input variable by TimedArray
     input_traces = TimedArray(input, dt = dt)
     input_unit = input.dim
-    model = model + Equations(input_var + '= input_var(t,i % Ntraces) :\
+    model = model + Equations(input_var + '= input_var(t,i % Nsteps) :\
                               '+ "% s" % repr(input_unit))
+
 
     # Add criterion with TimedArray
     output_traces = TimedArray(output, dt=dt)
+    output_unit = output.dim
     error_unit = output.dim**2
+
     model = model + Equations('total_error : %s' % repr(error_unit))
+    print('\n Nsteps', Nsteps)
+    print('Ntraces', Ntraces)
+    print('n_samples', n_samples)
+    print('Ntraces*n_samples', Ntraces*n_samples)
 
     # Population size for differential evolution
     neurons = NeuronGroup(Ntraces * n_samples, model, method=method)
     neurons.namespace['input_var'] = input_traces
     neurons.namespace['output_var'] = output_traces
     neurons.namespace['t_start'] = t_start
-    neurons.namespace['Ntraces'] = Ntraces
+    neurons.namespace['Nsteps'] = Nsteps
 
     # Record error
-    neurons.run_regularly('total_error +=  (' + output_var + '-output_var(t,i % Ntraces))**2 * int(t>=t_start)',
+    neurons.run_regularly('total_error +=  (' + output_var + '-output_var(t,i % Nsteps))**2 * int(t>=t_start)',
                           when='end')
+
+    if not isinstance(get_device(), CPPStandaloneDevice):
+        store()
 
     # Initialize the values
     def get_param_dic(parameters):
@@ -183,15 +208,13 @@ def fit_traces_standalone(model=None,
     # Set up the Optimizer
     optimizer.initialize(parameter_names, **params)
 
-    if not isinstance(get_device(), CPPStandaloneDevice):
-        store()
-
     # Run Optimization Loop
     for _ in range(n_rounds):
         parameters = optimizer.ask(n_samples=n_samples)
         d = get_param_dic(parameters)
 
-        run_neurons(duration, d)
+        monitor = run_neurons(duration, d, output_var)
+        output_traces = monitor.get_states(output_var)
         errors = calc_error()
 
         optimizer.tell(parameters, errors)
