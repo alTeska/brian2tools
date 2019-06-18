@@ -7,6 +7,8 @@ from brian2.devices.cpp_standalone.device import CPPStandaloneDevice
 from brian2.input import TimedArray
 from brian2.equations.equations import Equations
 
+from brian2 import *   # Temporary
+
 
 __all__ = ['fit_traces_standalone']
 
@@ -103,7 +105,10 @@ def fit_traces_standalone(model=None,
 
     Returns
     -------
-    Errors array for each set of parameters (RMS).
+    resdict : dict
+        dictionary with best parameter set
+    error: float
+        error value for best parameter set
     '''
 
     if isinstance(get_device(), CPPStandaloneDevice):
@@ -115,7 +120,6 @@ def fit_traces_standalone(model=None,
             global params_init
             if not device.has_been_run:
                 params_init = initialize_neurons(parameter_names, neurons, d)
-                # run(duration, namespace={})
                 run(duration)
 
             else:
@@ -130,7 +134,6 @@ def fit_traces_standalone(model=None,
         def run_neurons(duration, d, var):
             restore()
             neurons.set_states(d, units=False)
-
             monitor = StateMonitor(neurons, var, record=True)
 
             run(duration, namespace={})
@@ -157,33 +160,39 @@ def fit_traces_standalone(model=None,
     Ntraces, Nsteps = input.shape
     duration = Nsteps * dt
 
+    # fig, ax = plt.subplots(ncols=2)
+    # ax[0].plot(input[0])
+    # ax[1].plot(output[0])
+
     # Replace input variable by TimedArray
-    input_traces = TimedArray(input, dt = dt)
+    input_traces = TimedArray(input.transpose(), dt=dt)
+    # input_traces = TimedArray(input, dt=dt)
+
     input_unit = input.dim
-    model = model + Equations(input_var + '= input_var(t,i % Nsteps) :\
+    model = model + Equations(input_var + '= input_var(t, i % Ntraces) :\
                               '+ "% s" % repr(input_unit))
 
 
     # Add criterion with TimedArray
-    output_traces = TimedArray(output, dt=dt)
+    output_traces = TimedArray(output.transpose(), dt=dt)
+    # output_traces = TimedArray(output, dt=dt)
     output_unit = output.dim
     error_unit = output.dim**2
 
     model = model + Equations('total_error : %s' % repr(error_unit))
-    print('\n Nsteps', Nsteps)
-    print('Ntraces', Ntraces)
-    print('n_samples', n_samples)
-    print('Ntraces*n_samples', Ntraces*n_samples)
+    print(model)
 
     # Population size for differential evolution
     neurons = NeuronGroup(Ntraces * n_samples, model, method=method)
+
     neurons.namespace['input_var'] = input_traces
     neurons.namespace['output_var'] = output_traces
     neurons.namespace['t_start'] = t_start
     neurons.namespace['Nsteps'] = Nsteps
+    neurons.namespace['Ntraces'] = Ntraces
 
     # Record error
-    neurons.run_regularly('total_error +=  (' + output_var + '-output_var(t,i % Nsteps))**2 * int(t>=t_start)',
+    neurons.run_regularly('total_error +=  (' + output_var + '-output_var(t,i % Ntraces))**2 * int(t>=t_start)',
                           when='end')
 
     if not isinstance(get_device(), CPPStandaloneDevice):
@@ -196,7 +205,7 @@ def fit_traces_standalone(model=None,
         d = dict()
 
         for name, value in zip(parameter_names, parameters.T):
-            d[name] = (ones((Ntraces, n_samples)) * value[0]).T.flatten()
+            d[name] = (ones((Ntraces, n_samples)) * value).T.flatten()
         return d
 
     def calc_error():
@@ -208,13 +217,29 @@ def fit_traces_standalone(model=None,
     # Set up the Optimizer
     optimizer.initialize(parameter_names, **params)
 
+    ot = []
     # Run Optimization Loop
-    for _ in range(n_rounds):
+    for k in range(n_rounds):
         parameters = optimizer.ask(n_samples=n_samples)
         d = get_param_dic(parameters)
 
-        monitor = run_neurons(duration, d, output_var)
-        output_traces = monitor.get_states(output_var)
+        monitor = run_neurons(duration, d, [output_var, input_var, 'total_error'])
+
+        # output_traces = monitor.get_states(output_var)
+        # inp = monitor.get_states(input_var)
+        # out = monitor.get_states(output_var)
+        tot_err = getattr(monitor, 'total_error' + '_')
+        inp = getattr(monitor, input_var + '_')
+        out = getattr(monitor, output_var + '_')
+
+        fig, ax = plt.subplots(nrows=3, ncols=2)
+        ax[0][0].plot(out[0])
+        ax[0][1].plot(out.transpose())
+        ax[1][0].plot(inp[0])
+        ax[1][1].plot(inp.transpose())
+        ax[2][0].plot(tot_err[0])
+        ax[2][1].plot(tot_err.transpose())
+
         errors = calc_error()
 
         optimizer.tell(parameters, errors)
@@ -225,8 +250,6 @@ def fit_traces_standalone(model=None,
 
         index_param = where(array(parameters) == array(res))
         ii = index_param[0]
-        error = errors[ii][0]
+        error = errors[ii]
 
-        # TODO: add feedback and tolerance
-
-    return resdict, error
+    return resdict, error, ot

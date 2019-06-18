@@ -1,7 +1,8 @@
 from numpy import mean, ones, array, where
-from brian2 import NeuronGroup, store, restore, run, defaultclock, second
+from brian2 import NeuronGroup, store, restore, run, defaultclock, second, StateMonitor
 from brian2.input import TimedArray
 from brian2.equations.equations import Equations
+from brian2 import *
 
 
 __all__ = ['fit_traces_ask_tell']
@@ -56,7 +57,10 @@ def fit_traces_ask_tell(model=None,
 
     Returns
     -------
-    Errors array for each set of parameters (RMS).
+    resdict : dict
+        dictionary with best parameter set
+    error: float
+        error value for best parameter set
     '''
 
     parameter_names = model.parameter_names
@@ -80,12 +84,16 @@ def fit_traces_ask_tell(model=None,
 
     # Replace input variable by TimedArray
     input_traces = TimedArray(input, dt = dt)
+    # input_traces = TimedArray(input.transpose(), dt = dt)
+
     input_unit = input.dim
     model = model + Equations(input_var + '= input_var(t,i % Ntraces) :\
                               '+ "% s" % repr(input_unit))
 
     # Add criterion with TimedArray
     output_traces = TimedArray(output, dt=dt)
+    # output_traces = TimedArray(output.transpose(), dt=dt)
+
     error_unit = output.dim**2
     model = model + Equations('total_error : %s' % repr(error_unit))
 
@@ -113,19 +121,32 @@ def fit_traces_ask_tell(model=None,
 
         restore()
         neurons.set_states(d, units=False)
+
+        monitor = StateMonitor(neurons, [output_var, input_var], record=True)
+
         run(duration, namespace={})
 
         err = neurons.total_error/int((duration-t_start)/defaultclock.dt)
         err = mean(err.reshape((n_samples, Ntraces)), axis=1)
 
-        return array(err)
+        return array(err), monitor
 
     # set up the optimizer and get recommendation
     optimizer.initialize(parameter_names, **params)
 
     for _ in range(n_rounds):
         parameters = optimizer.ask(n_samples=n_samples)
-        errors = calc_error(parameters)
+
+        errors, monitor = calc_error(parameters)
+        inp = getattr(monitor, input_var + '_')
+        out = getattr(monitor, output_var + '_')
+        fig, ax = plt.subplots(nrows=2, ncols=2)
+        ax[0][0].plot(out)
+        ax[0][1].plot(out.transpose())
+        ax[1][0].plot(inp)
+        ax[1][1].plot(inp.transpose())
+        plt.show()
+
         optimizer.tell(parameters, errors)
         res = optimizer.recommend()
 
