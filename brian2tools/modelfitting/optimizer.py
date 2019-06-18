@@ -53,7 +53,7 @@ class Optimizer(object):
         pass
 
     @abc.abstractmethod
-    def recommend(self, n_best):
+    def recommend(self):
         """Returns best recomentation provided by the method"""
         pass
 
