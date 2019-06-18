@@ -15,12 +15,9 @@ VT = -63*mV
 dt = 0.01*ms
 
 # Generate a step-current input and an "experimental" voltage trace
-# input_current = np.hstack([np.zeros(int(5*ms/dt)), np.ones(int(5*ms/dt)), np.zeros(int(5*ms/dt))])*nA
-# print('input_current', input_current)
-# N, n1 = np.array([input_current]).shape
-
 input_current0 = np.hstack([np.zeros(int(5*ms/dt)), np.ones(int(5*ms/dt)), np.zeros(int(5*ms/dt))])*nA
 input_current1 = np.hstack([np.zeros(int(5*ms/dt)), np.ones(int(5*ms/dt))*2, np.zeros(int(5*ms/dt))])*nA
+
 input_current2 = np.stack((input_current0, input_current1))
 
 params_correct = {'gl': float(5e-5*siemens*cm**-2 * area),
@@ -77,14 +74,17 @@ inp_trace1 = np.array([input_current1])
 n0, n1 = inp_trace1.shape
 out_trace1 = np.array(voltage[:n1])
 
-plot(out_trace0)
-plot(out_trace1)
-plt.show()
+# plot(out_trace0)
+# plot(out_trace1)
+# plt.show()
 
 
 # Generate Proper Input Format for the Problem
 inp_trace = np.concatenate((inp_trace0, inp_trace1))
 out_trace = np.concatenate(([out_trace0], [out_trace1]))
+
+inp_trace = inp_trace0
+out_trace = [out_trace0]
 
 # Model for modelfitting
 eqs = Equations(
@@ -107,12 +107,13 @@ n_opt = NevergradOptimizer()
 
 
 # pass parameters to the NeuronGroup
-res, error = fit_traces_standalone(model=eqs, input_var='I', output_var='v',
+res, error = fit_traces_ask_tell(model=eqs, input_var='I', output_var='v',
                                    input=inp_trace * nA, output=out_trace*mV, dt=dt,
                                    gl=[1e-8*siemens*cm**-2 * area, 1e-4*siemens*cm**-2 * area],
                                    g_na=[1*msiemens*cm**-2 * area, 200*msiemens*cm**-2 * area],
                                    g_kd=[1*msiemens*cm**-2 * area, 100*msiemens*cm**-2 * area],
-                                   n_rounds=5, n_samples=30, optimizer=n_opt,)
+                                   n_rounds=1, n_samples=5, optimizer=n_opt,)
+
 
 # give information to the optimizer
 print('correct:', params_correct, '\n output:', res)
@@ -125,6 +126,7 @@ G = NeuronGroup(1, eqsHH, method='exponential_euler')
 G.v = El
 G.set_states(res, units=False)
 mon = StateMonitor(G, 'v', record=0)
+# mon = StateMonitor(G, ['v', 'I'], record=0)
 run(20*ms)
 
 voltage1 = mon.v[0]/mV

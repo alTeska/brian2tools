@@ -122,7 +122,7 @@ def fit_traces_ask_tell(model=None,
         restore()
         neurons.set_states(d, units=False)
 
-        monitor = StateMonitor(neurons, [output_var, input_var], record=True)
+        monitor = StateMonitor(neurons, [output_var, input_var, 'total_error'], record=True)
 
         run(duration, namespace={})
 
@@ -138,13 +138,17 @@ def fit_traces_ask_tell(model=None,
         parameters = optimizer.ask(n_samples=n_samples)
 
         errors, monitor = calc_error(parameters)
+        tot_err = getattr(monitor, 'total_error' + '_')
         inp = getattr(monitor, input_var + '_')
         out = getattr(monitor, output_var + '_')
-        fig, ax = plt.subplots(nrows=2, ncols=2)
-        ax[0][0].plot(out)
+
+        fig, ax = plt.subplots(nrows=3, ncols=2)
+        ax[0][0].plot(out[0])
         ax[0][1].plot(out.transpose())
-        ax[1][0].plot(inp)
+        ax[1][0].plot(inp[0])
         ax[1][1].plot(inp.transpose())
+        ax[2][0].plot(tot_err[0])
+        ax[2][1].plot(tot_err.transpose())
         plt.show()
 
         optimizer.tell(parameters, errors)

@@ -109,7 +109,7 @@ n_opt = NevergradOptimizer()
 
 
 # pass parameters to the NeuronGroup
-res, error, _ = fit_traces_standalone(model=eqs, input_var='I', output_var='v',
+res, error = fit_traces_standalone(model=eqs, input_var='I', output_var='v',
                                    input=inp_trace * nA, output=out_trace*mV, dt=dt,
                                    gl=[1e-8*siemens*cm**-2 * area, 1e-4*siemens*cm**-2 * area],
                                    g_na=[1*msiemens*cm**-2 * area, 200*msiemens*cm**-2 * area],

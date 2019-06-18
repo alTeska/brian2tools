@@ -184,7 +184,6 @@ def fit_traces_standalone(model=None,
 
     # Population size for differential evolution
     neurons = NeuronGroup(Ntraces * n_samples, model, method=method)
-
     neurons.namespace['input_var'] = input_traces
     neurons.namespace['output_var'] = output_traces
     neurons.namespace['t_start'] = t_start
@@ -226,8 +225,6 @@ def fit_traces_standalone(model=None,
         monitor = run_neurons(duration, d, [output_var, input_var, 'total_error'])
 
         # output_traces = monitor.get_states(output_var)
-        # inp = monitor.get_states(input_var)
-        # out = monitor.get_states(output_var)
         tot_err = getattr(monitor, 'total_error' + '_')
         inp = getattr(monitor, input_var + '_')
         out = getattr(monitor, output_var + '_')
@@ -239,6 +236,7 @@ def fit_traces_standalone(model=None,
         ax[1][1].plot(inp.transpose())
         ax[2][0].plot(tot_err[0])
         ax[2][1].plot(tot_err.transpose())
+        plt.show()
 
         errors = calc_error()
 
@@ -252,4 +250,4 @@ def fit_traces_standalone(model=None,
         ii = index_param[0]
         error = errors[ii]
 
-    return resdict, error, ot
+    return resdict, error
