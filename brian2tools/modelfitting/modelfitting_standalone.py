@@ -160,10 +160,6 @@ def fit_traces_standalone(model=None,
     Ntraces, Nsteps = input.shape
     duration = Nsteps * dt
 
-    # fig, ax = plt.subplots(ncols=2)
-    # ax[0].plot(input[0])
-    # ax[1].plot(output[0])
-
     # Replace input variable by TimedArray
     input_traces = TimedArray(input.transpose(), dt=dt)
     # input_traces = TimedArray(input, dt=dt)
@@ -229,14 +225,11 @@ def fit_traces_standalone(model=None,
         inp = getattr(monitor, input_var + '_')
         out = getattr(monitor, output_var + '_')
 
-        fig, ax = plt.subplots(nrows=3, ncols=2)
-        ax[0][0].plot(out[0])
-        ax[0][1].plot(out.transpose())
-        ax[1][0].plot(inp[0])
-        ax[1][1].plot(inp.transpose())
-        ax[2][0].plot(tot_err[0])
-        ax[2][1].plot(tot_err.transpose())
-        plt.show()
+        # fig, ax = plt.subplots(nrows=3)
+        # ax[0].plot(out.transpose())
+        # ax[1].plot(inp.transpose())
+        # ax[2].plot(tot_err.transpose())
+        # plt.show()
 
         errors = calc_error()
 
@@ -248,6 +241,6 @@ def fit_traces_standalone(model=None,
 
         index_param = where(array(parameters) == array(res))
         ii = index_param[0]
-        error = errors[ii]
+        error = errors[ii][0]  # TODO: re-check
 
     return resdict, error

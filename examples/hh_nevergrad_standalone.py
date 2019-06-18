@@ -24,7 +24,7 @@ params_correct = {'gl': float(5e-5*siemens*cm**-2 * area),
                   'g_na': float(100*msiemens*cm**-2 * area),
                   'g_kd': float(30*msiemens*cm**-2 * area)}
 
-input_current0 = np.hstack([np.zeros(int(5*ms/dt)), np.ones(int(5*ms/dt)), np.zeros(int(5*ms/dt)),np.zeros(int(5*ms/dt)),np.ones(int(5*ms/dt)),np.zeros(int(5*ms/dt))])*nA
+# input_current0 = np.hstack([np.zeros(int(5*ms/dt)), np.ones(int(5*ms/dt)), np.zeros(int(5*ms/dt)),np.zeros(int(5*ms/dt)),np.ones(int(5*ms/dt)),np.zeros(int(5*ms/dt))])*nA
 
 defaultclock.dt = dt
 
@@ -48,7 +48,7 @@ G = NeuronGroup(1, eqsHH, method='exponential_euler')
 G.v = El
 G.set_states(params_correct, units=False)
 mon = StateMonitor(G, 'v', record=0)
-run(30*ms)
+run(20*ms)
 
 voltage = mon.v[0]/mV
 voltage += np.random.randn(len(voltage))
@@ -60,33 +60,30 @@ n0, n1 = inp_trace0.shape
 out_trace0 = np.array(voltage[:n1])
 
 
-# start_scope()
-# I = TimedArray(input_current1, dt=dt)
-# G = NeuronGroup(1, eqsHH, method='exponential_euler')
-# G.v = El
-# G.set_states(params_correct, units=False)
-# mon = StateMonitor(G, 'v', record=0)
-#
-# run(20*ms)
-#
-# voltage = mon.v[0]/mV
-#
-# voltage += np.random.randn(len(voltage))
-# inp_trace1 = np.array([input_current1])
-# n0, n1 = inp_trace1.shape
-# out_trace1 = np.array(voltage[:n1])
+start_scope()
+I = TimedArray(input_current1, dt=dt)
+G = NeuronGroup(1, eqsHH, method='exponential_euler')
+G.v = El
+G.set_states(params_correct, units=False)
+mon = StateMonitor(G, 'v', record=0)
 
-# plot(out_trace0)
-# plot(out_trace1)
-# plt.show()
+run(20*ms)
+
+voltage = mon.v[0]/mV
+
+voltage += np.random.randn(len(voltage))
+inp_trace1 = np.array([input_current1])
+n0, n1 = inp_trace1.shape
+out_trace1 = np.array(voltage[:n1])
+
+plot(out_trace0)
+plot(out_trace1)
+plt.show()
 
 
 # Generate Proper Input Format for the Problem
-# inp_trace = np.concatenate((inp_trace0, inp_trace1))
-# out_trace = np.concatenate(([out_trace0], [out_trace1]))
-
-inp_trace = inp_trace0
-out_trace = [out_trace0]
+inp_trace = np.concatenate((inp_trace0, inp_trace1))
+out_trace = np.concatenate(([out_trace0], [out_trace1]))
 
 # Model for modelfitting
 eqs = Equations(
@@ -110,10 +107,10 @@ n_opt = NevergradOptimizer()
 
 # pass parameters to the NeuronGroup
 res, error = fit_traces_standalone(model=eqs, input_var='I', output_var='v',
-                                   input=inp_trace * nA, output=out_trace*mV, dt=dt,
-                                   gl=[1e-8*siemens*cm**-2 * area, 1e-4*siemens*cm**-2 * area],
-                                   g_na=[1*msiemens*cm**-2 * area, 200*msiemens*cm**-2 * area],
-                                   g_kd=[1*msiemens*cm**-2 * area, 100*msiemens*cm**-2 * area],
+                                   input=inp_trace * amp, output=out_trace*mV, dt=dt,
+                                   gl=[1e-8*siemens*cm**-2 * area, 1e-3*siemens*cm**-2 * area],
+                                   g_na=[1*msiemens*cm**-2 * area, 20000*msiemens*cm**-2 * area],
+                                   g_kd=[1*msiemens*cm**-2 * area, 10000*msiemens*cm**-2 * area],
                                    n_rounds=1, n_samples=5, optimizer=n_opt,)
 
 # give information to the optimizer
@@ -127,7 +124,7 @@ G = NeuronGroup(1, eqsHH, method='exponential_euler')
 G.v = El
 G.set_states(res, units=False)
 mon = StateMonitor(G, 'v', record=0)
-run(30*ms)
+run(20*ms)
 
 voltage1 = mon.v[0]/mV
 

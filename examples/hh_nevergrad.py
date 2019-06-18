@@ -74,11 +74,6 @@ inp_trace1 = np.array([input_current1])
 n0, n1 = inp_trace1.shape
 out_trace1 = np.array(voltage[:n1])
 
-# plot(out_trace0)
-# plot(out_trace1)
-# plt.show()
-
-
 # Generate Proper Input Format for the Problem
 inp_trace = np.concatenate((inp_trace0, inp_trace1))
 out_trace = np.concatenate(([out_trace0], [out_trace1]))
@@ -108,7 +103,7 @@ n_opt = NevergradOptimizer()
 
 # pass parameters to the NeuronGroup
 res, error = fit_traces_ask_tell(model=eqs, input_var='I', output_var='v',
-                                   input=inp_trace * nA, output=out_trace*mV, dt=dt,
+                                   input=inp_trace * amp, output=out_trace*mV, dt=dt,
                                    gl=[1e-8*siemens*cm**-2 * area, 1e-4*siemens*cm**-2 * area],
                                    g_na=[1*msiemens*cm**-2 * area, 200*msiemens*cm**-2 * area],
                                    g_kd=[1*msiemens*cm**-2 * area, 100*msiemens*cm**-2 * area],
