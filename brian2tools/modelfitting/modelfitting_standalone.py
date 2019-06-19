@@ -1,12 +1,8 @@
-import os
-from numpy import mean, ones, array, where, atleast_1d, shape
-from brian2 import (NeuronGroup, run, defaultclock, second,
-                    device, store, restore, get_device, StateMonitor)
-from brian2.devices.cpp_standalone.device import CPPStandaloneDevice
-
+from numpy import mean, ones, array, where
+from brian2 import NeuronGroup,  defaultclock, second, get_device
 from brian2.input import TimedArray
 from brian2.equations.equations import Equations
-from .simulation import Simulation, RuntimeSimulation, CPPStandaloneSimulation
+from .simulation import RuntimeSimulation, CPPStandaloneSimulation
 
 from brian2 import *   # Temporary
 
@@ -20,8 +16,6 @@ def make_dic(names, res):
         resdict[name] = value
 
     return resdict
-
-
 
 
 def fit_traces_standalone(model=None,
@@ -111,13 +105,11 @@ def fit_traces_standalone(model=None,
 
     input_unit = input.dim
     model = model + Equations(input_var + '= input_var(t, i % Ntraces) :\
-                              '+ "% s" % repr(input_unit))
-
+                              ' + "% s" % repr(input_unit))
 
     # Add criterion with TimedArray
     output_traces = TimedArray(output.transpose(), dt=dt)
     # output_traces = TimedArray(output, dt=dt)
-    output_unit = output.dim
     error_unit = output.dim**2
 
     model = model + Equations('total_error : %s' % repr(error_unit))
@@ -131,8 +123,8 @@ def fit_traces_standalone(model=None,
     neurons.namespace['Ntraces'] = Ntraces
 
     # Record error
-    neurons.run_regularly('total_error +=  (' + output_var + '-output_var(t,i % Ntraces))**2 * int(t>=t_start)',
-                          when='end')
+    neurons.run_regularly('total_error +=  (' + output_var + '-output_var\
+                          (t,i % Ntraces))**2 * int(t>=t_start)', when='end')
 
     simulator.initialize_simulation(neurons)
 
@@ -155,27 +147,22 @@ def fit_traces_standalone(model=None,
     # Set up the Optimizer
     optimizer.initialize(parameter_names, **params)
 
-    ot = []
+    ot, te  = [], []
     # Run Optimization Loop
     for k in range(n_rounds):
         parameters = optimizer.ask(n_samples=n_samples)
         d = get_param_dic(parameters)
 
-        simulator.run_simulation(neurons, duration, d, parameter_names)
+        mon = simulator.run_simulation(neurons, duration, d, parameter_names,
+                                       [output_var, input_var, 'total_error'])
 
-        # run_neurons(neurons, duration, d, [output_var, input_var, 'total_error'])
-        # monitor = run_neurons(duration, d, [output_var, input_var, 'total_error'])
+        tot_err = getattr(mon, 'total_error' + '_')
+        # inp = getattr(mon, input_var + '_')
+        out = getattr(mon, output_var + '_')
 
-        # output_traces = monitor.get_states(output_var)
-        # tot_err = getattr(monitor, 'total_error' + '_')
-        # inp = getattr(monitor, input_var + '_')
-        # out = getattr(monitor, output_var + '_')
+        ot.append(out)
+        te.append(tot_err)
 
-        # fig, ax = plt.subplots(nrows=3)
-        # ax[0].plot(out.transpose())
-        # ax[1].plot(inp.transpose())
-        # ax[2].plot(tot_err.transpose())
-        # plt.show()
 
         errors = calc_error()
 
@@ -184,9 +171,8 @@ def fit_traces_standalone(model=None,
 
         # create output variables
         resdict = make_dic(parameter_names, res)
-
         index_param = where(array(parameters) == array(res))
         ii = index_param[0]
         error = errors[ii]  # TODO: re-check
 
-    return resdict, error
+    return resdict, error, ot, te

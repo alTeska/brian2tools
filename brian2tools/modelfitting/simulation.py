@@ -1,7 +1,7 @@
 import os
 import abc
 from numpy import atleast_1d
-from brian2 import (run, device, store, restore)
+from brian2 import (run, device, store, restore, StateMonitor)
 
 
 def initialize_parameter(variableview, value):
@@ -44,7 +44,7 @@ class Simulation(object):
     """
     Simluation class
     """
-    __metaclass__= abc.ABCMeta
+    __metaclass__ = abc.ABCMeta
     def __init__(self):
         pass
 
@@ -83,10 +83,13 @@ class RuntimeSimulation(Simulation):
     def initialize_simulation(self, neurons):
         store()
 
-    def run_simulation(self, neurons, duration, params, params_names):
+    def run_simulation(self, neurons, duration, params, params_names, mon_vars):
         restore()
+        monitor = StateMonitor(neurons, mon_vars, record=True)
         neurons.set_states(params, units=False)
         run(duration, namespace={})
+
+        return monitor
 
 
 class CPPStandaloneSimulation(Simulation):
@@ -94,11 +97,12 @@ class CPPStandaloneSimulation(Simulation):
     def initialize_simulation(self, neurons):
         pass
 
-    def run_simulation(self, neurons, duration, params, params_names):
+    def run_simulation(self, neurons, duration, params, params_names, mon_vars):
         """
         simulation has to be run in two stages in order to initalize the
         code generaion
         """
+        monitor = StateMonitor(neurons, mon_vars, record=True)
         if not device.has_been_run:
             self.params_init = initialize_neurons(params_names, neurons,
                                                   params)
@@ -107,3 +111,5 @@ class CPPStandaloneSimulation(Simulation):
         else:
             set_states(self.params_init, params)
             run_again()
+
+        return monitor
