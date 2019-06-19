@@ -18,11 +18,28 @@ class Optimizer(object):
     __metaclass__ = abc.ABCMeta
 
     def __init__(self, method='DE', **kwds):
-        """Initialize the given optimizator with method and specific arguments"""
+        """
+        Initialize the given optimizator with method and specific arguments
+
+        Parameters
+        ----------
+        method: string
+            optimization method
+        **kwds: parameters to be passed to optimization init
+        """
         pass
 
     def calc_bounds(self, parameter_names, **params):
-        """Verify and get the provided for parameters bounds"""
+        """
+        Verify and get the provided for parameters bounds
+
+        Parameters
+        ----------
+        parameter_names: list
+            list of parameter names in use
+        **params:
+            bounds for each parameter
+        """
         for param in parameter_names:
             if (param not in params):
                 raise Exception("Bounds must be set for parameter %s" % param)
@@ -39,22 +56,57 @@ class Optimizer(object):
         Initialize the instrumentation for the optimization, based on
         parameters, creates bounds for variables and attaches them to the
         optimizer
+
+        Parameters
+        ----------
+        parameter_names: list
+            list of parameter names in use
+        **params:
+            bounds for each parameter
         """
         pass
 
     @abc.abstractmethod
     def ask(self, n_samples):
-        """Returns the requested number of samples of parameter sets"""
+        """
+        Returns the requested number of samples of parameter sets
+
+        Parameters
+        ----------
+        n_samples: int
+            number of samples to be drawn
+
+        Returns
+        -------
+        parameters: list
+            list of drawn parameters [n_samples x n_params]
+        """
         pass
 
     @abc.abstractmethod
     def tell(self, parameters, errors):
-        """Provides the evaluated errors from parameter sets to optimizer"""
+        """
+        Provides the evaluated errors from parameter sets to optimizer
+
+        Parameters
+        ----------
+        parameters: list
+            list of parameters [n_samples x n_params]
+        errors:
+            list of errors [n_samples]
+        """
         pass
 
     @abc.abstractmethod
     def recommend(self):
-        """Returns best recomentation provided by the method"""
+        """
+        Returns best recomentation provided by the method
+
+        Returns
+        -------
+        result: list
+            list of best fit parameters[n_params]
+        """
         pass
 
 
