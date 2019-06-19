@@ -68,14 +68,15 @@ gl   : siemens (constant)
 ''',
 Cm=1*ufarad*cm**-2 * area, El=-65*mV, EK=-90*mV, ENa=50*mV, VT=-63*mV)
 
+s_opt = SkoptOptimizer(method='gp', random_state=1)
 
 # pass parameters to the NeuronGroup
-res, error = fit_traces_ask_tell(model=eqs, input_var='I', output_var='v',
+res, error = fit_traces_standalone(model=eqs, input_var='I', output_var='v',
                              input=inp_trace * nA, output=out_trace*mV, dt=dt,
                              gl=[1e-6*siemens*cm**-2 * area, 1e-5*siemens*cm**-2 * area],
                              g_na=[1*msiemens*cm**-2 * area, 200*msiemens*cm**-2 * area],
                              g_kd=[1*msiemens*cm**-2 * area, 100*msiemens*cm**-2 * area],
-                             optimizer=SkoptOptimizer, method_opt='gp')
+                             optimizer=s_opt)
 
 
 

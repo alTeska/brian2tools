@@ -1,6 +1,7 @@
 from brian2 import *
 from brian2tools import *
 
+# set_device('cpp_standalone', directory='parallel', clean=False)
 
 # create input and output
 input_traces = zeros((10,1))*volt
@@ -18,9 +19,9 @@ model = Equations('''
 s_opt = SkoptOptimizer(method='gp', random_state=1)
 
 # pass parameters to the NeuronGroup
-res, error = fit_traces_ask_tell(model=model, input_var='v', output_var='I',
-                                 input=input_traces, output=output_traces,
-                                 dt=0.1*ms, optimizer=s_opt,
-                                 g=[1*nS, 30*nS], E=[-20*mV, 100*mV],)
+res, error = fit_traces_standalone(model=model, input_var='v', output_var='I',
+                                   input=input_traces, output=output_traces,
+                                   dt=0.1*ms, optimizer=s_opt,
+                                   g=[1*nS, 30*nS], E=[-20*mV, 100*mV],)
 
 print(res, error)
