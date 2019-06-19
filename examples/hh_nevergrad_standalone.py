@@ -2,7 +2,8 @@ from brian2 import *
 from brian2tools import *
 
 
-prefs.codegen.target = 'cython'  # weave is not multiprocess-safe!
+# prefs.codegen.target = 'cython'  # weave is not multiprocess-safe!
+set_device('cpp_standalone', directory='parallel', clean=False)
 
 # Parameters
 area = 20000*umetre**2

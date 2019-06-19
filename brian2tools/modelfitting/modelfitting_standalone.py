@@ -176,7 +176,6 @@ def fit_traces_standalone(model=None,
     error_unit = output.dim**2
 
     model = model + Equations('total_error : %s' % repr(error_unit))
-    print(model)
 
     # Population size for differential evolution
     neurons = NeuronGroup(Ntraces * n_samples, model, method=method)
@@ -242,6 +241,6 @@ def fit_traces_standalone(model=None,
 
         index_param = where(array(parameters) == array(res))
         ii = index_param[0]
-        error = errors[ii][0]  # TODO: re-check
+        error = errors[ii]  # TODO: re-check
 
     return resdict, error
