@@ -6,6 +6,7 @@ from brian2.devices.cpp_standalone.device import CPPStandaloneDevice
 
 from brian2.input import TimedArray
 from brian2.equations.equations import Equations
+from .simulation import Simulation, RuntimeSimulation, CPPStandaloneSimulation
 
 from brian2 import *   # Temporary
 
@@ -21,39 +22,6 @@ def make_dic(names, res):
     return resdict
 
 
-def initialize_parameter(variableview, value):
-    variable = variableview.variable
-    array_name = device.get_array_name(variable)
-    static_array_name = device.static_array(array_name, value)
-    device.main_queue.append(('set_by_array', (array_name,
-                                               static_array_name,
-                                               False)))
-    return static_array_name
-
-
-def initialize_neurons(parameter_names, neurons, d):
-    params_init = dict()
-
-    for name in parameter_names:
-        params_init[name] = initialize_parameter(neurons.__getattr__(name),
-                                                 d[name])
-    return params_init
-
-
-def set_parameter_value(identifier, value):
-    atleast_1d(value).tofile(os.path.join(device.project_dir,
-                                          'static_arrays',
-                                          identifier))
-
-
-def run_again():
-    device.run(device.project_dir, with_output=False, run_args=[])
-
-
-def set_states(init_dict, values):
-    # TODO: add a param checker
-    for obj_name, obj_values in values.items():
-        set_parameter_value(init_dict[obj_name], obj_values)
 
 
 def fit_traces_standalone(model=None,
@@ -111,34 +79,15 @@ def fit_traces_standalone(model=None,
         error value for best parameter set
     '''
 
+    # here no if just a dictionary simulators which maps RuntimeDevice to
+    # RuntimeSimulation and CPPStandaloneDevice to CPPStandaloneSimulation
     if isinstance(get_device(), CPPStandaloneDevice):
         print('Standalone')
-
-        def run_neurons(neurons, duration, d, var):
-            # monitor = StateMonitor(neurons, var, record=True)
-
-            global params_init
-            if not device.has_been_run:
-                params_init = initialize_neurons(parameter_names, neurons, d)
-                run(duration)
-
-            else:
-                set_states(params_init, d)
-                run_again()
-
-            # return monitor
-
+        simulator = CPPStandaloneSimulation()
     else:
         print("Runtime")
+        simulator = RuntimeSimulation()
 
-        def run_neurons(neurons, duration, d, var):
-            restore()
-            neurons.set_states(d, units=False)
-            # monitor = StateMonitor(neurons, var, record=True)
-
-            run(duration, namespace={})
-
-            # return monitor
 
     parameter_names = model.parameter_names
 
@@ -189,8 +138,7 @@ def fit_traces_standalone(model=None,
     neurons.run_regularly('total_error +=  (' + output_var + '-output_var(t,i % Ntraces))**2 * int(t>=t_start)',
                           when='end')
 
-    if not isinstance(get_device(), CPPStandaloneDevice):
-        store()
+    simulator.initialize_simulation(neurons)
 
     # Initialize the values
     def get_param_dic(parameters):
@@ -217,7 +165,9 @@ def fit_traces_standalone(model=None,
         parameters = optimizer.ask(n_samples=n_samples)
         d = get_param_dic(parameters)
 
-        run_neurons(neurons, duration, d, [output_var, input_var, 'total_error'])
+        simulator.run_simulation(neurons, duration, d, parameter_names)
+
+        # run_neurons(neurons, duration, d, [output_var, input_var, 'total_error'])
         # monitor = run_neurons(duration, d, [output_var, input_var, 'total_error'])
 
         # output_traces = monitor.get_states(output_var)
