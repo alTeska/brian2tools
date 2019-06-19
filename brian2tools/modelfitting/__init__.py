@@ -3,7 +3,6 @@ Package to fit models to experimental data
 """
 
 from .modelfitting import *
-from .modelfitting_asktell import *
 from .modelfitting_standalone import *
 from .optimizer import *
 from .metric import *
