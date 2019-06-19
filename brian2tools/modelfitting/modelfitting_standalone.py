@@ -114,8 +114,8 @@ def fit_traces_standalone(model=None,
     if isinstance(get_device(), CPPStandaloneDevice):
         print('Standalone')
 
-        def run_neurons(duration, d, var):
-            monitor = StateMonitor(neurons, var, record=True)
+        def run_neurons(neurons, duration, d, var):
+            # monitor = StateMonitor(neurons, var, record=True)
 
             global params_init
             if not device.has_been_run:
@@ -126,19 +126,19 @@ def fit_traces_standalone(model=None,
                 set_states(params_init, d)
                 run_again()
 
-            return monitor
+            # return monitor
 
     else:
         print("Runtime")
 
-        def run_neurons(duration, d, var):
+        def run_neurons(neurons, duration, d, var):
             restore()
             neurons.set_states(d, units=False)
-            monitor = StateMonitor(neurons, var, record=True)
+            # monitor = StateMonitor(neurons, var, record=True)
 
             run(duration, namespace={})
 
-            return monitor
+            # return monitor
 
     parameter_names = model.parameter_names
 
@@ -218,12 +218,13 @@ def fit_traces_standalone(model=None,
         parameters = optimizer.ask(n_samples=n_samples)
         d = get_param_dic(parameters)
 
-        monitor = run_neurons(duration, d, [output_var, input_var, 'total_error'])
+        run_neurons(neurons, duration, d, [output_var, input_var, 'total_error'])
+        # monitor = run_neurons(duration, d, [output_var, input_var, 'total_error'])
 
         # output_traces = monitor.get_states(output_var)
-        tot_err = getattr(monitor, 'total_error' + '_')
-        inp = getattr(monitor, input_var + '_')
-        out = getattr(monitor, output_var + '_')
+        # tot_err = getattr(monitor, 'total_error' + '_')
+        # inp = getattr(monitor, input_var + '_')
+        # out = getattr(monitor, output_var + '_')
 
         # fig, ax = plt.subplots(nrows=3)
         # ax[0].plot(out.transpose())
