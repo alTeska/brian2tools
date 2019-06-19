@@ -79,16 +79,12 @@ def fit_traces_standalone(model=None,
         error value for best parameter set
     '''
 
-    # here no if just a dictionary simulators which maps RuntimeDevice to
-    # RuntimeSimulation and CPPStandaloneDevice to CPPStandaloneSimulation
-    if isinstance(get_device(), CPPStandaloneDevice):
-        print('Standalone')
-        simulator = CPPStandaloneSimulation()
-    else:
-        print("Runtime")
-        simulator = RuntimeSimulation()
+    simulators = {
+        'CPPStandaloneDevice': CPPStandaloneSimulation(),
+        'RuntimeDevice': RuntimeSimulation()
+    }
 
-
+    simulator = simulators[get_device().__class__.__name__]
     parameter_names = model.parameter_names
 
     # dt must be set
