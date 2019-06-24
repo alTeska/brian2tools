@@ -34,18 +34,13 @@ class RMSMetric(Metric):
 
     def traces_to_features(self, traces, output_traces, Ntraces):
         errors = []
-        # Ntraces, Nsteps = shape(output_traces)
-        print('Ntraces', Ntraces)
+        mse = []
 
-        mse_list = []
         for trace in traces:
-            mse = sum(square(output_traces - trace))
-            mse_list.append(mse)
+            mse.append(sum(square(output_traces - trace)))
 
         # after here split to next function
-        mse_len = len(mse_list)
-        mse_arr = reshape(array(mse_list), (int(mse_len/Ntraces), Ntraces))
-        print('mse_arr', mse_arr)
+        mse_arr = reshape(array(mse), (int(len(mse)/Ntraces), Ntraces))
         errors = mse_arr.mean(axis=1)
 
         return errors

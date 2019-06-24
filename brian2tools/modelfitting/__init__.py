@@ -11,4 +11,5 @@ from .simulation import *
 
 __all__ = ['fit_traces', 'fit_traces_standalone',
            'Optimizer', 'NevergradOptimizer', 'SkoptOptimizer',
-           'Simulation', 'RuntimeSimulation', 'CPPStandaloneSimulation']
+           'Simulation', 'RuntimeSimulation', 'CPPStandaloneSimulation',
+           'RMSMetric']

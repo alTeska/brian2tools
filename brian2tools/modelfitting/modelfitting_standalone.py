@@ -3,7 +3,6 @@ from brian2 import NeuronGroup,  defaultclock, second, get_device
 from brian2.input import TimedArray
 from brian2.equations.equations import Equations
 from .simulation import RuntimeSimulation, CPPStandaloneSimulation
-from .metric import RMSMetric
 
 from brian2 import *   # Temporary
 
@@ -29,6 +28,7 @@ def fit_traces_standalone(model=None,
                           t_start=0*second,
                           method=('linear', 'exponential_euler', 'euler'),
                           optimizer=None,
+                          metric=None,
                           n_samples=10,
                           n_rounds=1,
                           **params):
@@ -148,9 +148,6 @@ def fit_traces_standalone(model=None,
     # Set up the Optimizer
     optimizer.initialize(parameter_names, **params)
 
-    ot, te = [], []
-    metric = RMSMetric()
-
     # Run Optimization Loop
     for k in range(n_rounds):
         parameters = optimizer.ask(n_samples=n_samples)
@@ -159,28 +156,20 @@ def fit_traces_standalone(model=None,
         mon = simulator.run_simulation(neurons, duration, d, parameter_names,
                                        [output_var, input_var, 'total_error'])
 
-        tot_err = getattr(mon, 'total_error' + '_')
-        # inp = getattr(mon, input_var + '_')
         # out = getattr(mon, output_var + '_')
         out = getattr(mon, output_var)
 
-        ot.append(out)
-        te.append(tot_err)
-
-        errors_beta = metric.traces_to_features(out, output[k], Ntraces)
+        errors_met = metric.traces_to_features(out, output[k], Ntraces)
         errors = calc_error()
 
-        print('errors_beta', errors_beta)
-        print('errors', errors)
-
         # optimizer.tell(parameters, errors)
-        optimizer.tell(parameters, errors_beta)
+        optimizer.tell(parameters, errors_met)
         res = optimizer.recommend()
 
         # create output variables
         resdict = make_dic(parameter_names, res)
         index_param = where(array(parameters) == array(res))
         ii = index_param[0]
-        error = errors[ii]  # TODO: re-check
+        error = errors_met[ii]  # TODO: re-check
 
-    return resdict, error, ot, te
+    return resdict, error

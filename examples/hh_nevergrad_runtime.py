@@ -102,15 +102,16 @@ Cm=1*ufarad*cm**-2 * area, El=-65*mV, EK=-90*mV, ENa=50*mV, VT=-63*mV)
 
 
 n_opt = NevergradOptimizer()
+metric = RMSMetric()
 
 
 # pass parameters to the NeuronGroup
-res, error, _, _ = fit_traces_standalone(model=eqs, input_var='I', output_var='v',
+res, error = fit_traces_standalone(model=eqs, input_var='I', output_var='v',
                                    input=inp_trace * amp, output=out_trace*mV, dt=dt,
                                    gl=[1e-8*siemens*cm**-2 * area, 1e-3*siemens*cm**-2 * area],
                                    g_na=[1*msiemens*cm**-2 * area, 2000*msiemens*cm**-2 * area],
                                    g_kd=[1*msiemens*cm**-2 * area, 1000*msiemens*cm**-2 * area],
-                                   n_rounds=1, n_samples=5, optimizer=n_opt,)
+                                   n_rounds=1, n_samples=5, optimizer=n_opt, metric=metric)
 
 # give information to the optimizer
 print('correct:', params_correct, '\n output:', res)
