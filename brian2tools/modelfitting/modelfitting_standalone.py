@@ -3,6 +3,7 @@ from brian2 import NeuronGroup,  defaultclock, second, get_device
 from brian2.input import TimedArray
 from brian2.equations.equations import Equations
 from .simulation import RuntimeSimulation, CPPStandaloneSimulation
+from .metric import RMSMetric
 
 from brian2 import *   # Temporary
 
@@ -147,7 +148,9 @@ def fit_traces_standalone(model=None,
     # Set up the Optimizer
     optimizer.initialize(parameter_names, **params)
 
-    ot, te  = [], []
+    ot, te = [], []
+    metric = RMSMetric()
+
     # Run Optimization Loop
     for k in range(n_rounds):
         parameters = optimizer.ask(n_samples=n_samples)
@@ -158,15 +161,20 @@ def fit_traces_standalone(model=None,
 
         tot_err = getattr(mon, 'total_error' + '_')
         # inp = getattr(mon, input_var + '_')
-        out = getattr(mon, output_var + '_')
+        # out = getattr(mon, output_var + '_')
+        out = getattr(mon, output_var)
 
         ot.append(out)
         te.append(tot_err)
 
-
+        errors_beta = metric.traces_to_features(out, output[k], Ntraces)
         errors = calc_error()
 
-        optimizer.tell(parameters, errors)
+        print('errors_beta', errors_beta)
+        print('errors', errors)
+
+        # optimizer.tell(parameters, errors)
+        optimizer.tell(parameters, errors_beta)
         res = optimizer.recommend()
 
         # create output variables
