@@ -4,8 +4,6 @@ from brian2.input import TimedArray
 from brian2.equations.equations import Equations
 from .simulation import RuntimeSimulation, CPPStandaloneSimulation
 
-from brian2 import *   # Temporary
-
 
 __all__ = ['fit_traces_standalone']
 
@@ -24,7 +22,6 @@ def fit_traces_standalone(model=None,
                           output_var=None,
                           output=None,
                           dt=None,
-                          maxiter=None,
                           t_start=0*second,
                           method=('linear', 'exponential_euler', 'euler'),
                           optimizer=None,
@@ -48,16 +45,14 @@ def fit_traces_standalone(model=None,
     input : input data as a 2D array
     output : output data as a 2D array
     dt : time step
-    maxiter : int, optional
-        Maximum number of iterations.
     method: string, optional
         Integration method
     t_start: starting time of error measurement.
 
     optimizer: ~brian2tools.modelfitting.Optimizer children
         Child of Optimizer class, specific for each library.
-    method_opt: string
-        Optimization method, to be chosen within each library.
+    metric: ~brian2tools.modelfitting.Metric children
+        Child of Metric class, specifies optimization metric
     n_samples: int
         Number of parameter samples to be optimized over.
     n_rounds: int
@@ -102,7 +97,6 @@ def fit_traces_standalone(model=None,
 
     # Replace input variable by TimedArray
     input_traces = TimedArray(input.transpose(), dt=dt)
-    # input_traces = TimedArray(input, dt=dt)
 
     input_unit = input.dim
     model = model + Equations(input_var + '= input_var(t, i % Ntraces) :\
@@ -110,10 +104,9 @@ def fit_traces_standalone(model=None,
 
     # Add criterion with TimedArray
     output_traces = TimedArray(output.transpose(), dt=dt)
-    # output_traces = TimedArray(output, dt=dt)
-    error_unit = output.dim**2
+    # error_unit = output.dim**2
 
-    model = model + Equations('total_error : %s' % repr(error_unit))
+    # model = model + Equations('total_error : %s' % repr(error_unit))
 
     # Population size for differential evolution
     neurons = NeuronGroup(Ntraces * n_samples, model, method=method)
@@ -124,8 +117,8 @@ def fit_traces_standalone(model=None,
     neurons.namespace['Ntraces'] = Ntraces
 
     # Record error
-    neurons.run_regularly('total_error +=  (' + output_var + '-output_var\
-                          (t,i % Ntraces))**2 * int(t>=t_start)', when='end')
+    # neurons.run_regularly('total_error +=  (' + output_var + '-output_var\
+                          # (t,i % Ntraces))**2 * int(t>=t_start)', when='end')
 
     simulator.initialize_simulation(neurons)
 
@@ -154,13 +147,12 @@ def fit_traces_standalone(model=None,
         d = get_param_dic(parameters)
 
         mon = simulator.run_simulation(neurons, duration, d, parameter_names,
-                                       [output_var, input_var, 'total_error'])
+                                       [output_var])
 
-        # out = getattr(mon, output_var + '_')
+        # if metrc isinstance(Metric)
         out = getattr(mon, output_var)
-
-        errors_met = metric.traces_to_features(out, output[k], Ntraces)
-        errors = calc_error()
+        errors_met = metric.calc(out, output[k], Ntraces)
+        # errors = calc_error()
 
         # optimizer.tell(parameters, errors)
         optimizer.tell(parameters, errors_met)
@@ -170,6 +162,6 @@ def fit_traces_standalone(model=None,
         resdict = make_dic(parameter_names, res)
         index_param = where(array(parameters) == array(res))
         ii = index_param[0]
-        error = errors_met[ii]  # TODO: re-check
+        error = errors_met[ii][0]  # TODO: re-check
 
     return resdict, error

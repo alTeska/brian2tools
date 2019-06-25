@@ -18,11 +18,11 @@ model = Equations('''
 
 
 n_opt = NevergradOptimizer()
-
+metric =  MSEMetric()
 # pass parameters to the NeuronGroup
 res, error = fit_traces_standalone(model=model, input_var='v', output_var='I',
                                    input=input_traces, output=output_traces,
-                                   dt=0.1*ms, optimizer=n_opt,
+                                   dt=0.1*ms, optimizer=n_opt, metric=metric,
                                    n_rounds=2, n_samples=10,
                                    g=[1*nS, 30*nS], E=[-20*mV, 100*mV],)
 

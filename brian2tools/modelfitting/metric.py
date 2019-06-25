@@ -20,30 +20,38 @@ class Metric(object):
         pass
 
     @abc.abstractmethod
-    def features_to_error(self, features):
+    def features_to_errors(self, features, Ntraces):
         """
         Function weights features/multiple errors into one final error fed
         back to the optimization algorithm
         """
         pass
 
+    @abc.abstractmethod
+    def calc(traces, output_traces, Ntraces):
+        """Performs the error calculation"""
+        pass
 
-class RMSMetric(Metric):
+
+class MSEMetric(Metric):
     def __init__(self):
         super(Metric, self).__init__()
 
-    def traces_to_features(self, traces, output_traces, Ntraces):
-        errors = []
+    def traces_to_features(self, traces, output_traces):
         mse = []
 
         for trace in traces:
             mse.append(sum(square(output_traces - trace)))
 
-        # after here split to next function
-        mse_arr = reshape(array(mse), (int(len(mse)/Ntraces), Ntraces))
-        errors = mse_arr.mean(axis=1)
+        return mse
+
+    def features_to_errors(self, features, n_traces):
+        feat_arr = reshape(array(features), (int(len(features)/n_traces),
+                           n_traces))
+        return feat_arr.mean(axis=1)
+
+    def calc(self, traces, output_traces, Ntraces):
+        mse = self.traces_to_features(traces, output_traces)
+        errors = self.features_to_errors(mse, Ntraces)
 
         return errors
-
-    def features_to_error(self, features):
-        pass

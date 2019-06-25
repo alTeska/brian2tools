@@ -74,7 +74,7 @@ Cm=1*ufarad*cm**-2 * area, El=-65*mV, EK=-90*mV, ENa=50*mV, VT=-63*mV)
 set_device('cpp_standalone', directory='parallel', clean=False)
 
 n_opt = NevergradOptimizer()
-
+metric = MSEmetric()
 
 # pass parameters to the NeuronGroup
 res, error = fit_traces_standalone(model=eqs, input_var='I', output_var='v',
@@ -83,12 +83,17 @@ res, error = fit_traces_standalone(model=eqs, input_var='I', output_var='v',
                                    gl=[1e-8*siemens*cm**-2 * area, 1e-4*siemens*cm**-2 * area],
                                    g_na=[1*msiemens*cm**-2 * area, 200*msiemens*cm**-2 * area],
                                    g_kd=[1*msiemens*cm**-2 * area, 100*msiemens*cm**-2 * area],
-                                   n_rounds=2, n_samples=5, optimizer=n_opt,)
+                                   n_rounds=2, n_samples=5, optimizer=n_opt, metric=metric)
 
 
 # give information to the optimizer
 print('correct:', params_correct, '\n output:', res)
 print('error', error)
+
+start_scope()
+fits = generate_fits(model=eqs, method='exponential_euler', params=res,
+                     input=inp_trace * amp, input_var='I', output_var='v', dt=dt)
+
 
 
 # visualization of the results
