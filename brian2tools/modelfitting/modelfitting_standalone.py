@@ -8,12 +8,13 @@ from .simulation import RuntimeSimulation, CPPStandaloneSimulation
 __all__ = ['fit_traces_standalone']
 
 
-def make_dic(names, res):
-    resdict = dict()
-    for name, value in zip(names, res):
-        resdict[name] = value
+def make_dic(names, values):
+    """Create dictionary based on list of strings and 2D array"""
+    result_dict = dict()
+    for name, value in zip(names, values):
+        result_dict[name] = value
 
-    return resdict
+    return result_dict
 
 
 def fit_traces_standalone(model=None,
@@ -28,6 +29,7 @@ def fit_traces_standalone(model=None,
                           metric=None,
                           n_samples=10,
                           n_rounds=1,
+                          verbose = True,
                           **params):
     '''
     Creates an interface for evaluation of parameters drawn by evolutionary
@@ -57,13 +59,15 @@ def fit_traces_standalone(model=None,
         Number of parameter samples to be optimized over.
     n_rounds: int
         Number of rounds to optimize over. (feedback provided over each round)
+    verbose: bool
+        Provide error feedback at each round
 
     TODO:
         -tolerance
 
     Returns
     -------
-    resdict : dict
+    result_dict : dict
         dictionary with best parameter set
     error: float
         error value for best parameter set
@@ -104,8 +108,8 @@ def fit_traces_standalone(model=None,
 
     # Add criterion with TimedArray
     output_traces = TimedArray(output.transpose(), dt=dt)
-    # error_unit = output.dim**2
 
+    # error_unit = output.dim**2
     # model = model + Equations('total_error : %s' % repr(error_unit))
 
     # Population size for differential evolution
@@ -149,19 +153,21 @@ def fit_traces_standalone(model=None,
         mon = simulator.run_simulation(neurons, duration, d, parameter_names,
                                        [output_var])
 
-        # if metrc isinstance(Metric)
+        # if isinstance(metrc, Metric): elif isinstance(metic, array):
         out = getattr(mon, output_var)
-        errors_met = metric.calc(out, output[k], Ntraces)
+        errors = metric.calc(out, output[k], Ntraces)
         # errors = calc_error()
 
-        # optimizer.tell(parameters, errors)
-        optimizer.tell(parameters, errors_met)
+        optimizer.tell(parameters, errors)
         res = optimizer.recommend()
 
         # create output variables
-        resdict = make_dic(parameter_names, res)
+        result_dict = make_dic(parameter_names, res)
         index_param = where(array(parameters) == array(res))
         ii = index_param[0]
-        error = errors_met[ii][0]  # TODO: re-check
+        error = errors[ii][0]  # TODO: re-check
 
-    return resdict, error
+        if verbose:
+            print('round {} with error {}'.format(k, error))
+
+    return result_dict, error

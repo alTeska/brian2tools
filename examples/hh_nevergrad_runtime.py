@@ -76,10 +76,6 @@ inp_trace1 = np.array([input_current1])
 n0, n1 = inp_trace1.shape
 out_trace1 = np.array(voltage[:n1])
 
-# plot(out_trace0)
-# plot(out_trace1)
-# plt.show()
-
 # Generate Proper Input Format for the Problem
 inp_trace = np.concatenate((inp_trace0, inp_trace1))
 out_trace = np.concatenate(([out_trace0], [out_trace1]))
@@ -120,13 +116,15 @@ print('error', error)
 # visualization of the results
 start_scope()
 fits = generate_fits(model=eqs, method='exponential_euler', params=res,
-                     input=inp_trace * amp, input_var='I', output_var='v', dt=dt)
+                     input=inp_trace * amp, input_var='I', output_var='v',
+                     dt=dt)
 
 
-plt.figure()
-plot(np.arange(len(voltage))*dt/ms, voltage);
-plot(np.arange(len(fits[0]))*dt/ms, fits[0]/mV);
-plot(np.arange(len(fits[1]))*dt/ms, fits[1]/mV);
+fig, ax = plt.subplots(nrows=2)
+ax[0].plot(np.arange(len(out_trace[0]))*dt/ms, out_trace[0]);
+ax[0].plot(np.arange(len(fits[0]))*dt/ms, fits[0]/mV);
+ax[1].plot(np.arange(len(out_trace[1]))*dt/ms, out_trace[1]);
+ax[1].plot(np.arange(len(fits[1]))*dt/ms, fits[1]/mV);
 plt.title('nevergrad optimization')
 # plt.savefig('plots/hh_nevergrad.png')
 plt.show()
