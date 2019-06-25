@@ -39,7 +39,6 @@ def set_states(init_dict, values):
         set_parameter_value(init_dict[obj_name], obj_values)
 
 
-
 class Simulation(object):
     """
     Simluation class
@@ -87,7 +86,7 @@ class RuntimeSimulation(Simulation):
         restore()
         monitor = StateMonitor(neurons, mon_vars, record=True)
         neurons.set_states(params, units=False)
-        run(duration, namespace={})
+        run(duration, namespace={})\
 
         return monitor
 

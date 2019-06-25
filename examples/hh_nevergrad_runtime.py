@@ -117,21 +117,16 @@ res, error = fit_traces_standalone(model=eqs, input_var='I', output_var='v',
 print('correct:', params_correct, '\n output:', res)
 print('error', error)
 
-
 # visualization of the results
 start_scope()
-G = NeuronGroup(1, eqsHH, method='exponential_euler')
-G.v = El
-G.set_states(res, units=False)
-mon = StateMonitor(G, 'v', record=0)
-run(20*ms)
-
-voltage1 = mon.v[0]/mV
+fits = generate_fits(model=eqs, method='exponential_euler', params=res,
+                     input=inp_trace * amp, input_var='I', output_var='v', dt=dt)
 
 
 plt.figure()
 plot(np.arange(len(voltage))*dt/ms, voltage);
-plot(np.arange(len(voltage1))*dt/ms, voltage1);
+plot(np.arange(len(fits[0]))*dt/ms, fits[0]/mV);
+plot(np.arange(len(fits[1]))*dt/ms, fits[1]/mV);
 plt.title('nevergrad optimization')
-plt.savefig('plots/hh_nevergrad.png')
+# plt.savefig('plots/hh_nevergrad.png')
 plt.show()
