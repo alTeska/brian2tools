@@ -3,7 +3,7 @@ from brian2 import NeuronGroup,  defaultclock, second, get_device
 from brian2.input import TimedArray
 from brian2.equations.equations import Equations
 from .simulation import RuntimeSimulation, CPPStandaloneSimulation
-
+from .metric import Metric
 
 __all__ = ['fit_traces_standalone']
 
@@ -30,6 +30,7 @@ def fit_traces_standalone(model=None,
                           n_samples=10,
                           n_rounds=1,
                           verbose=True,
+                          param_init=None,
                           **params):
     '''
     Creates an interface for evaluation of parameters drawn by evolutionary
@@ -86,6 +87,13 @@ def fit_traces_standalone(model=None,
         raise Exception('dt (sampling frequency of the input) must be set')
     defaultclock.dt = dt
 
+    # Check initialization of params
+    if param_init:
+        for param, val in param_init.items():
+            if not (param in model.identifiers or param in model.names):
+                raise Exception("%s is not a model variable or an identifier in the model")
+
+
     # Check input variable
     if input_var not in model.identifiers:
         raise Exception("%s is not an identifier in the model" % input_var)
@@ -109,8 +117,8 @@ def fit_traces_standalone(model=None,
     # Add criterion with TimedArray
     output_traces = TimedArray(output.transpose(), dt=dt)
 
-    # error_unit = output.dim**2
-    # model = model + Equations('total_error : %s' % repr(error_unit))
+    error_unit = output.dim**2
+    model = model + Equations('total_error : %s' % repr(error_unit))
 
     # Population size for differential evolution
     neurons = NeuronGroup(Ntraces * n_samples, model, method=method)
@@ -120,9 +128,13 @@ def fit_traces_standalone(model=None,
     neurons.namespace['Nsteps'] = Nsteps
     neurons.namespace['Ntraces'] = Ntraces
 
+    # initalize the values
+    if param_init:
+        neurons.set_states(param_init)
+
     # Record error
-    # neurons.run_regularly('total_error +=  (' + output_var + '-output_var\
-                          # (t,i % Ntraces))**2 * int(t>=t_start)', when='end')
+    neurons.run_regularly('total_error +=  (' + output_var + '-output_var\
+                          (t,i % Ntraces))**2 * int(t>=t_start)', when='end')
 
     simulator.initialize_simulation(neurons)
 
@@ -152,11 +164,12 @@ def fit_traces_standalone(model=None,
 
         mon = simulator.run_simulation(neurons, duration, d, parameter_names,
                                        [output_var])
-
-        # if isinstance(metrc, Metric): elif isinstance(metic, array):
         out = getattr(mon, output_var)
-        errors = metric.calc(out, output, Ntraces)
-        # errors = calc_error()
+
+        if isinstance(metric, Metric):
+            errors = metric.calc(out, output, Ntraces)
+        else:
+            errors = calc_error()
 
         optimizer.tell(parameters, errors)
         res = optimizer.recommend()

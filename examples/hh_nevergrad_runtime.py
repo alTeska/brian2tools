@@ -104,10 +104,12 @@ metric = MSEMetric()
 # pass parameters to the NeuronGroup
 res, error = fit_traces_standalone(model=eqs, input_var='I', output_var='v',
                                    input=inp_trace * amp, output=out_trace*mV, dt=dt,
+                                   n_rounds=1, n_samples=5, optimizer=n_opt, metric=metric,
+                                   param_init={'v': -65*mV},
                                    gl=[1e-8*siemens*cm**-2 * area, 1e-3*siemens*cm**-2 * area],
                                    g_na=[1*msiemens*cm**-2 * area, 2000*msiemens*cm**-2 * area],
                                    g_kd=[1*msiemens*cm**-2 * area, 1000*msiemens*cm**-2 * area],
-                                   n_rounds=1, n_samples=5, optimizer=n_opt, metric=metric)
+                                   )
 
 # give information to the optimizer
 print('correct:', params_correct, '\n output:', res)
@@ -117,7 +119,7 @@ print('error', error)
 start_scope()
 fits = generate_fits(model=eqs, method='exponential_euler', params=res,
                      input=inp_trace * amp, input_var='I', output_var='v',
-                     dt=dt)
+                     dt=dt, param_init={'v': -65*mV})
 
 
 fig, ax = plt.subplots(nrows=2)
