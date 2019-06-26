@@ -90,12 +90,6 @@ res, error = fit_traces_standalone(model=eqs, input_var='I', output_var='v',
 print('correct:', params_correct, '\n output:', res)
 print('error', error)
 
-start_scope()
-fits = generate_fits(model=eqs, method='exponential_euler', params=res,
-                     input=inp_trace * amp, input_var='I', output_var='v', dt=dt)
-
-
-
 # visualization of the results
 # start_scope()
 # G = NeuronGroup(1, eqsHH, method='exponential_euler')

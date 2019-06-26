@@ -7,7 +7,6 @@ class Metric(object):
     Metic acstract class to define functions required for a custom metric
     To be used with modelfitting fit_traces.
     """
-
     __metaclass__= abc.ABCMeta
 
     def __init__(self, **kwds):

@@ -13,6 +13,7 @@ def generate_fits(model, method, params, input, input_var, output_var, dt, param
 
     param_names = model.parameter_names
 
+    # set up simulator
     simulators = {
         'CPPStandaloneDevice': CPPStandaloneSimulation(),
         'RuntimeDevice': RuntimeSimulation()
@@ -30,7 +31,7 @@ def generate_fits(model, method, params, input, input_var, output_var, dt, param
     neurons = NeuronGroup(Ntraces, model, method=method)
     neurons.namespace['input_var'] = input_traces
     neurons.namespace['Ntraces'] = Ntraces
-    
+
     # initalize the values
     neurons.set_states(param_init)
 
