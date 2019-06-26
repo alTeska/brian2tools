@@ -29,7 +29,7 @@ def fit_traces_standalone(model=None,
                           metric=None,
                           n_samples=10,
                           n_rounds=1,
-                          verbose = True,
+                          verbose=True,
                           **params):
     '''
     Creates an interface for evaluation of parameters drawn by evolutionary
@@ -155,7 +155,7 @@ def fit_traces_standalone(model=None,
 
         # if isinstance(metrc, Metric): elif isinstance(metic, array):
         out = getattr(mon, output_var)
-        errors = metric.calc(out, output[k], Ntraces)
+        errors = metric.calc(out, output, Ntraces)
         # errors = calc_error()
 
         optimizer.tell(parameters, errors)
