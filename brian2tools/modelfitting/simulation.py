@@ -48,7 +48,7 @@ class Simulation(object):
         pass
 
     @abc.abstractmethod
-    def initialize_simulation(self, neurons):
+    def initialize(self, neurons):
         """
         Prepares the simulation for running
 
@@ -60,7 +60,7 @@ class Simulation(object):
         pass
 
     @abc.abstractmethod
-    def run_simulation(self, neurons, duration, params):
+    def run(self, neurons, duration, params):
         """
         Restores the network, sets neurons to required parameters and runs
         the simulation
@@ -79,36 +79,37 @@ class Simulation(object):
 
 class RuntimeSimulation(Simulation):
     """Simulation class created for use with RuntimeDevice"""
-    def initialize_simulation(self, neurons):
+    def initialize(self, neurons):
         store()
 
-    def run_simulation(self, neurons, duration, params, params_names, mon_vars):
+    def run(self, duration, params, params_names, vars, neurons):
         restore()
-        monitor = StateMonitor(neurons, mon_vars, record=True)
-        neurons.set_states(params, units=False)
-        run(duration, namespace={})\
 
-        return monitor
+        monitor = StateMonitor(neurons, vars, record=True)
+        neurons.set_states(params, units=False)
+        run(duration, namespace={})
+
+        out = getattr(monitor, vars)
+
+        return out
 
 
 class CPPStandaloneSimulation(Simulation):
     """Simulation class created for use with CPPStandaloneDevice"""
-    def initialize_simulation(self, neurons):
-        pass
+    def initialize(self, neurons):
+        self.neurons = neurons
 
-    def run_simulation(self, neurons, duration, params, params_names, mon_vars):
+    def run(self, duration, params, params_names, monitor):
         """
         simulation has to be run in two stages in order to initalize the
         code generaion
         """
-        monitor = StateMonitor(neurons, mon_vars, record=True)
+        self.monitor = monitor
         if not device.has_been_run:
-            self.params_init = initialize_neurons(params_names, neurons,
+            self.params_init = initialize_neurons(params_names, self.neurons,
                                                   params)
             run(duration)
 
         else:
             set_states(self.params_init, params)
             run_again()
-
-        return monitor

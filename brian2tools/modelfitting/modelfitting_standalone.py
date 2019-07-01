@@ -1,5 +1,5 @@
 from numpy import mean, ones, array, where
-from brian2 import NeuronGroup,  defaultclock, second, get_device
+from brian2 import NeuronGroup,  defaultclock, second, get_device, StateMonitor
 from brian2.input import TimedArray
 from brian2.equations.equations import Equations
 from .simulation import RuntimeSimulation, CPPStandaloneSimulation
@@ -136,7 +136,6 @@ def fit_traces_standalone(model=None,
     neurons.run_regularly('total_error +=  (' + output_var + '-output_var\
                           (t,i % Ntraces))**2 * int(t>=t_start)', when='end')
 
-    simulator.initialize_simulation(neurons)
 
     # Initialize the values
     def get_param_dic(parameters):
@@ -154,17 +153,19 @@ def fit_traces_standalone(model=None,
 
         return array(err)
 
-    # Set up the Optimizer
+    # Set up Simulator and Optimizer
     optimizer.initialize(parameter_names, **params)
+    simulator.initialize(neurons)
 
     # Run Optimization Loop
     for k in range(n_rounds):
         parameters = optimizer.ask(n_samples=n_samples)
-        d = get_param_dic(parameters)
+        d_param = get_param_dic(parameters)
+        out = simulator.run(duration, d_param, parameter_names, output_var, neurons)
+        # out = simulator.run(duration, d_param, parameter_names, output_var)
+        # out = getattr(simulator.monitor, output_var)
 
-        mon = simulator.run_simulation(neurons, duration, d, parameter_names,
-                                       [output_var])
-        out = getattr(mon, output_var)
+        print('out', out)
 
         if isinstance(metric, Metric):
             errors = metric.calc(out, output, Ntraces)
