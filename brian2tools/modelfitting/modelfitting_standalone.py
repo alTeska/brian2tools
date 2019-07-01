@@ -124,8 +124,9 @@ def fit_traces_standalone(model=None,
     # Add criterion with TimedArray
     output_traces = TimedArray(output.transpose(), dt=dt)
 
-    error_unit = output.dim**2
-    model = model + Equations('total_error : %s' % repr(error_unit))
+    if metric is None:
+        error_unit = output.dim**2
+        model = model + Equations('total_error : %s' % repr(error_unit))
 
     # Population size for differential evolution
     neurons = NeuronGroup(Ntraces * n_samples, model, method=method, name='neurons')
@@ -140,12 +141,14 @@ def fit_traces_standalone(model=None,
         neurons.set_states(param_init)
 
     # Record error
-    neurons.run_regularly('total_error +=  (' + output_var + '-output_var\
-                          (t,i % Ntraces))**2 * int(t>=t_start)', when='end')
+    if metric is None:
+        neurons.run_regularly('total_error +=  (' + output_var + '-output_var\
+                            (t,i % Ntraces))**2 * int(t>=t_start)', when='end')
 
 
     # Initialize the values
     def get_param_dic(parameters):
+        """transform parameters into a dictionary of appropiate size"""
         parameters = array(parameters)
 
         d = dict()
@@ -155,6 +158,7 @@ def fit_traces_standalone(model=None,
         return d
 
     def calc_error():
+        """calculate online error"""
         err = neurons.total_error/int((duration-t_start)/defaultclock.dt)
         err = mean(err.reshape((n_samples, Ntraces)), axis=1)
 
@@ -173,12 +177,12 @@ def fit_traces_standalone(model=None,
         parameters = optimizer.ask(n_samples=n_samples)
         d_param = get_param_dic(parameters)
         simulator.run(duration, d_param, parameter_names)
-        out = getattr(simulator.network['monitor'], output_var)
         # out2 = getattr(monitor, output_var)
 
         if isinstance(metric, Metric):
+            out = getattr(simulator.network['monitor'], output_var)
             errors = metric.calc(out, output, Ntraces)
-        else:
+        elif metric is None:
             errors = calc_error()
 
         optimizer.tell(parameters, errors)
@@ -188,6 +192,7 @@ def fit_traces_standalone(model=None,
         result_dict = make_dic(parameter_names, res)
         index_param = where(array(parameters) == array(res))
         ii = index_param[0]
+
         # TODO: fix error
         # print('index_param', index_param)
         error = errors[ii]  # TODO: re-check
