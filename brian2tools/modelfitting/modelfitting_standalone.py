@@ -44,15 +44,14 @@ def fit_traces_standalone(model=None,
         The equations describing the model.
     input_var : string
         Input variable name.
+    input : input data as a 2D array
     output_var : string
         Output variable name.
-    input : input data as a 2D array
     output : output data as a 2D array
     dt : time step
+    t_start: starting time of error measurement.
     method: string, optional
         Integration method
-    t_start: starting time of error measurement.
-
     optimizer: ~brian2tools.modelfitting.Optimizer children
         Child of Optimizer class, specific for each library.
     metric: ~brian2tools.modelfitting.Metric children
@@ -63,9 +62,11 @@ def fit_traces_standalone(model=None,
         Number of rounds to optimize over. (feedback provided over each round)
     verbose: bool
         Provide error feedback at each round
+    param_init: dict
+        Dictionary of variables to be initialized with the value
+    **params:
+        bounds for each parameter
 
-    TODO:
-        -tolerance
 
     Returns
     -------
@@ -73,6 +74,11 @@ def fit_traces_standalone(model=None,
         dictionary with best parameter set
     error: float
         error value for best parameter set
+
+    TODO:
+     - resolve t_start
+     - tolerance
+
     '''
 
     simulators = {

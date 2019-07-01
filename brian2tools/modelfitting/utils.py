@@ -4,8 +4,40 @@ from .simulation import RuntimeSimulation, CPPStandaloneSimulation
 
 
 # TODO: get generate fits to work with standalone
-def generate_fits(model, method, params, input, input_var, output_var, dt, param_init=None):
-    """Generate instance of best fits for all of the traces"""
+def generate_fits(model,
+                  params,
+                  input,
+                  input_var,
+                  output_var,
+                  dt,
+                  method,
+                  param_init=None):
+    """
+    Generate instance of best fits for predicted parameters and all of the
+    traces
+
+    Parameters
+    ----------
+    model : `~brian2.equations.Equations` or string
+        The equations describing the model.
+    params : dict
+        Predicted parameters
+    input : input data as a 2D array
+    input_var : string
+        Input variable name.
+    output_var : string
+        Output variable name.
+    dt : time step
+    method: string, optional
+        Integration method
+    param_init: dict
+        Dictionary of variables to be initialized with the value
+
+    Returns
+    -------
+    fits: array
+        Traces for each input current
+    """
 
     # Check initialization of params
     for param, val in param_init.items():

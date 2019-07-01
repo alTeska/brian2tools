@@ -25,7 +25,8 @@ class Optimizer(object):
         ----------
         method: string
             optimization method
-        **kwds: parameters to be passed to optimization init
+        **kwds:
+            parameters to be passed to optimization init
         """
         pass
 
