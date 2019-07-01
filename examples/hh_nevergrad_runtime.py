@@ -106,6 +106,7 @@ res, error = fit_traces_standalone(model=eqs, input_var='I', output_var='v',
                                    input=inp_trace * amp, output=out_trace*mV, dt=dt,
                                    n_rounds=1, n_samples=5, optimizer=n_opt, metric=metric,
                                    param_init={'v': -65*mV},
+                                   method='exponential_euler',
                                    gl=[1e-8*siemens*cm**-2 * area, 1e-3*siemens*cm**-2 * area],
                                    g_na=[1*msiemens*cm**-2 * area, 2000*msiemens*cm**-2 * area],
                                    g_kd=[1*msiemens*cm**-2 * area, 1000*msiemens*cm**-2 * area],
@@ -123,10 +124,10 @@ fits = generate_fits(model=eqs, method='exponential_euler', params=res,
 
 
 fig, ax = plt.subplots(nrows=2)
-ax[0].plot(np.arange(len(out_trace[0]))*dt/ms, out_trace[0]);
-ax[0].plot(np.arange(len(fits[0]))*dt/ms, fits[0]/mV);
-ax[1].plot(np.arange(len(out_trace[1]))*dt/ms, out_trace[1]);
-ax[1].plot(np.arange(len(fits[1]))*dt/ms, fits[1]/mV);
+ax[0].plot(np.arange(len(out_trace[0]))*dt/ms, out_trace[0])
+ax[0].plot(np.arange(len(fits[0]))*dt/ms, fits[0]/mV)
+ax[1].plot(np.arange(len(out_trace[1]))*dt/ms, out_trace[1])
+ax[1].plot(np.arange(len(fits[1]))*dt/ms, fits[1]/mV)
 plt.title('nevergrad optimization')
 # plt.savefig('plots/hh_nevergrad.png')
 plt.show()

@@ -74,11 +74,12 @@ Cm=1*ufarad*cm**-2 * area, El=-65*mV, EK=-90*mV, ENa=50*mV, VT=-63*mV)
 set_device('cpp_standalone', directory='parallel', clean=False)
 
 n_opt = NevergradOptimizer()
-metric = MSEmetric()
+metric = MSEMetric()
 
 # pass parameters to the NeuronGroup
 res, error = fit_traces_standalone(model=eqs, input_var='I', output_var='v',
                                    input=inp_trace * amp, output=[out_trace]*mV, dt=dt,
+                                   param_init={'v': -65*mV},
                                    method='exponential_euler',
                                    gl=[1e-8*siemens*cm**-2 * area, 1e-4*siemens*cm**-2 * area],
                                    g_na=[1*msiemens*cm**-2 * area, 200*msiemens*cm**-2 * area],
@@ -90,21 +91,20 @@ res, error = fit_traces_standalone(model=eqs, input_var='I', output_var='v',
 print('correct:', params_correct, '\n output:', res)
 print('error', error)
 
+
 # visualization of the results
+# TODO: get generate fits to work with standalone
 # start_scope()
-# G = NeuronGroup(1, eqsHH, method='exponential_euler')
-# G.v = El
-# G.set_states(res, units=False)
-# mon = StateMonitor(G, 'v', record=0)
-# # mon = StateMonitor(G, ['v', 'I'], record=0)
-# run(25*ms)
+# set_device('cpp_standalone', directory='any', clean=False)
 #
-# voltage1 = mon.v[0]/mV
+# fits = generate_fits(model=eqs, method='exponential_euler', params=res,
+#                      input=inp_trace * amp, input_var='I', output_var='v',
+#                      dt=dt, param_init={'v': -65*mV})
 #
 #
-# plt.figure()
-# plot(np.arange(len(voltage))*dt/ms, voltage);
-# plot(np.arange(len(voltage1))*dt/ms, voltage1);
+# fig, ax = plt.subplots(nrows=1)
+# ax[0].plot(np.arange(len(out_trace[0]))*dt/ms, out_trace[0])
+# ax[0].plot(np.arange(len(fits[0]))*dt/ms, fits[0]/mV)
 # plt.title('nevergrad optimization')
-# plt.savefig('plots/hh_nevergrad.png')
+# # plt.savefig('plots/hh_nevergrad_standalone.png')
 # plt.show()

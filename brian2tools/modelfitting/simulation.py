@@ -1,7 +1,7 @@
 import os
 import abc
 from numpy import atleast_1d
-from brian2 import (run, device, store, restore, StateMonitor)
+from brian2 import device
 
 
 def initialize_parameter(variableview, value):
@@ -79,36 +79,30 @@ class Simulation(object):
 
 class RuntimeSimulation(Simulation):
     """Simulation class created for use with RuntimeDevice"""
-    def initialize(self, neurons):
-        store()
+    def initialize(self, network):
+        self.network = network
+        self.network.store()
 
-    def run(self, duration, params, params_names, vars, neurons):
-        restore()
-
-        monitor = StateMonitor(neurons, vars, record=True)
-        neurons.set_states(params, units=False)
-        run(duration, namespace={})
-
-        out = getattr(monitor, vars)
-
-        return out
+    def run(self, duration, params, params_names):
+        self.network.restore()
+        self.network['neurons'].set_states(params, units=False)
+        self.network.run(duration, namespace={})
 
 
 class CPPStandaloneSimulation(Simulation):
     """Simulation class created for use with CPPStandaloneDevice"""
-    def initialize(self, neurons):
-        self.neurons = neurons
+    def initialize(self, network):
+        self.network = network
 
-    def run(self, duration, params, params_names, monitor):
+    def run(self, duration, params, params_names):
         """
         simulation has to be run in two stages in order to initalize the
         code generaion
         """
-        self.monitor = monitor
         if not device.has_been_run:
-            self.params_init = initialize_neurons(params_names, self.neurons,
+            self.params_init = initialize_neurons(params_names, self.network['neurons'],
                                                   params)
-            run(duration)
+            self.network.run(duration)
 
         else:
             set_states(self.params_init, params)

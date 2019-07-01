@@ -1,5 +1,6 @@
 from numpy import mean, ones, array, where
-from brian2 import NeuronGroup,  defaultclock, second, get_device, StateMonitor
+from brian2 import (NeuronGroup,  defaultclock, second, get_device, StateMonitor,
+                    Network)
 from brian2.input import TimedArray
 from brian2.equations.equations import Equations
 from .simulation import RuntimeSimulation, CPPStandaloneSimulation
@@ -121,7 +122,7 @@ def fit_traces_standalone(model=None,
     model = model + Equations('total_error : %s' % repr(error_unit))
 
     # Population size for differential evolution
-    neurons = NeuronGroup(Ntraces * n_samples, model, method=method)
+    neurons = NeuronGroup(Ntraces * n_samples, model, method=method, name='neurons')
     neurons.namespace['input_var'] = input_traces
     neurons.namespace['output_var'] = output_traces
     neurons.namespace['t_start'] = t_start
@@ -155,17 +156,19 @@ def fit_traces_standalone(model=None,
 
     # Set up Simulator and Optimizer
     optimizer.initialize(parameter_names, **params)
-    simulator.initialize(neurons)
+    monitor = StateMonitor(neurons, output_var, record=True, name='monitor')
+
+    network = Network()
+    network.add(neurons, monitor)
+    simulator.initialize(network)
 
     # Run Optimization Loop
     for k in range(n_rounds):
         parameters = optimizer.ask(n_samples=n_samples)
         d_param = get_param_dic(parameters)
-        out = simulator.run(duration, d_param, parameter_names, output_var, neurons)
-        # out = simulator.run(duration, d_param, parameter_names, output_var)
-        # out = getattr(simulator.monitor, output_var)
-
-        print('out', out)
+        simulator.run(duration, d_param, parameter_names)
+        out = getattr(simulator.network['monitor'], output_var)
+        # out2 = getattr(monitor, output_var)
 
         if isinstance(metric, Metric):
             errors = metric.calc(out, output, Ntraces)
@@ -179,7 +182,9 @@ def fit_traces_standalone(model=None,
         result_dict = make_dic(parameter_names, res)
         index_param = where(array(parameters) == array(res))
         ii = index_param[0]
-        error = errors[ii][0]  # TODO: re-check
+        # TODO: fix error
+        # print('index_param', index_param)
+        error = errors[ii]  # TODO: re-check
 
         if verbose:
             print('round {} with error {}'.format(k, error))
