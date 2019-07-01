@@ -5,6 +5,7 @@ from brian2 import device
 
 
 def initialize_parameter(variableview, value):
+    """initliazie parameter variable in static file"""
     variable = variableview.variable
     array_name = device.get_array_name(variable)
     static_array_name = device.static_array(array_name, value)
@@ -14,65 +15,70 @@ def initialize_parameter(variableview, value):
     return static_array_name
 
 
-def initialize_neurons(params_names, neurons, d):
+def initialize_neurons(params_names, neurons, params):
+    """initialize each parameter for NeuronGroup"""
     params_init = dict()
 
     for name in params_names:
         params_init[name] = initialize_parameter(neurons.__getattr__(name),
-                                                 d[name])
+                                                 params[name])
     return params_init
 
 
+def run_again():
+    """rerun the NeuronGroup on cpp file"""
+    device.run(device.project_dir, with_output=False, run_args=[])
+
+
 def set_parameter_value(identifier, value):
+    """change parameter value in cpp file"""
     atleast_1d(value).tofile(os.path.join(device.project_dir,
                                           'static_arrays',
                                           identifier))
 
 
-def run_again():
-    device.run(device.project_dir, with_output=False, run_args=[])
-
-
 def set_states(init_dict, values):
     # TODO: add a param checker
+    """set parameters values in the file for the NeuronGroup"""
     for obj_name, obj_values in values.items():
         set_parameter_value(init_dict[obj_name], obj_values)
 
 
 class Simulation(object):
     """
-    Simluation class
+    Simluation class created to perform a simulation for fit_traces
     """
     __metaclass__ = abc.ABCMeta
+
     def __init__(self):
+        """pass"""
         pass
 
     @abc.abstractmethod
-    def initialize(self, neurons):
+    def initialize(self, network):
         """
         Prepares the simulation for running
 
         Parameters
         ----------
-        neurons: NeuronGroup initialized instance
-            neurons to be simulatied
+        network: Network initialized instance
+            consisting of NeuronGroup and a Monitor
         """
         pass
 
     @abc.abstractmethod
-    def run(self, neurons, duration, params):
+    def run(self, duration, params, params_names):
         """
         Restores the network, sets neurons to required parameters and runs
         the simulation
 
         Parameters
         ----------
-        neurons: NeuronGroup initialized instance
-            neurons to be simulatied
         duration: simulation duration [ms]
-
         params: dict
             parameters to be set
+        params_names: list strings
+            names of parameters to set the dictionary
         """
         pass
 
@@ -96,7 +102,7 @@ class CPPStandaloneSimulation(Simulation):
 
     def run(self, duration, params, params_names):
         """
-        simulation has to be run in two stages in order to initalize the
+        Simulation has to be run in two stages in order to initalize the
         code generaion
         """
         if not device.has_been_run:
