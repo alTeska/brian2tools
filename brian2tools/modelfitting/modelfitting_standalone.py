@@ -32,6 +32,7 @@ def fit_traces_standalone(model=None,
                           n_rounds=1,
                           verbose=True,
                           param_init=None,
+                          reset=None, refractory=None, threshold=None,
                           **params):
     '''
     Creates an interface for evaluation of parameters drawn by evolutionary
@@ -98,8 +99,8 @@ def fit_traces_standalone(model=None,
     if param_init:
         for param, val in param_init.items():
             if not (param in model.identifiers or param in model.names):
-                raise Exception("%s is not a model variable or an identifier in the model")
-
+                raise Exception("%s is not a model variable or an identifier \
+                                in the model")
 
     # Check input variable
     if input_var not in model.identifiers:
@@ -129,7 +130,15 @@ def fit_traces_standalone(model=None,
         model = model + Equations('total_error : %s' % repr(error_unit))
 
     # Population size for differential evolution
-    neurons = NeuronGroup(Ntraces * n_samples, model, method=method, name='neurons')
+    if refractory:
+        neurons = NeuronGroup(Ntraces * n_samples, model, method=method,
+                              threshold=threshold, reset=reset,
+                              refractory=refractory, name='neurons')
+    else:
+        neurons = NeuronGroup(Ntraces * n_samples, model, method=method,
+                              threshold=threshold, reset=reset,
+                              name='neurons')
+
     neurons.namespace['input_var'] = input_traces
     neurons.namespace['output_var'] = output_traces
     neurons.namespace['t_start'] = t_start
@@ -144,7 +153,6 @@ def fit_traces_standalone(model=None,
     if metric is None:
         neurons.run_regularly('total_error +=  (' + output_var + '-output_var\
                             (t,i % Ntraces))**2 * int(t>=t_start)', when='end')
-
 
     # Initialize the values
     def get_param_dic(parameters):
@@ -166,7 +174,7 @@ def fit_traces_standalone(model=None,
 
     # Set up Simulator and Optimizer
     optimizer.initialize(parameter_names, **params)
-    monitor = StateMonitor(neurons, output_var, record=True, name='monitor')
+    monitor = StateMonitor(neurons, output_var, record=True,    name='monitor')
 
     network = Network()
     network.add(neurons, monitor)

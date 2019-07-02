@@ -11,6 +11,7 @@ def generate_fits(model,
                   output_var,
                   dt,
                   method,
+                  reset=None, refractory=None, threshold=None,
                   param_init=None):
     """
     Generate instance of best fits for predicted parameters and all of the
@@ -63,7 +64,14 @@ def generate_fits(model,
     model = model + Equations(input_var + '= input_var(t, i % Ntraces) :\
                               ' + "% s" % repr(input_unit))
 
-    neurons = NeuronGroup(Ntraces, model, method=method, name='neurons')
+    if refractory:
+        neurons = NeuronGroup(Ntraces, model, method=method,
+                              threshold=threshold, reset=reset,
+                              refractory=refractory, name='neurons')
+    else:
+        neurons = NeuronGroup(Ntraces, model, method=method,
+                              threshold=threshold, reset=reset,
+                              name='neurons')
     neurons.namespace['input_var'] = input_traces
     neurons.namespace['Ntraces'] = Ntraces
 
