@@ -40,10 +40,11 @@ def generate_fits(model,
     """
 
     # Check initialization of params
-    for param, val in param_init.items():
-        if not (param in model.identifiers or param in model.names):
-            raise Exception("%s is not a model variable or an identifier in\
-                            the model")
+    if param_init:
+        for param, val in param_init.items():
+            if not (param in model.identifiers or param in model.names):
+                raise Exception("%s is not a model variable or an identifier in\
+                                the model")
 
     param_names = model.parameter_names
 
@@ -67,7 +68,8 @@ def generate_fits(model,
     neurons.namespace['Ntraces'] = Ntraces
 
     # initalize the values
-    neurons.set_states(param_init)
+    if param_init:
+        neurons.set_states(param_init)
 
     monitor = StateMonitor(neurons, output_var, record=True, name='monitor')
 
