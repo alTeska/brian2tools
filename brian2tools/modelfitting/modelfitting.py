@@ -9,11 +9,12 @@ TODO:
 * Symbolic gradient calculation
 * Extend to IF models (threshold, reset etc)
 '''
-from numpy import mean, ones, array, shape
+from numpy import mean, ones, array
 from brian2.equations.equations import (DIFFERENTIAL_EQUATION, Equations,
                                         SingleEquation, PARAMETER)
 from brian2.input import TimedArray
-from brian2 import NeuronGroup, StateMonitor, store, restore, run, defaultclock, second, Quantity
+from brian2 import (NeuronGroup, StateMonitor, store, restore, run,
+                    defaultclock, second, Quantity)
 from brian2.stateupdaters.base import StateUpdateMethod
 from .differential_evolution import differential_evolution
 

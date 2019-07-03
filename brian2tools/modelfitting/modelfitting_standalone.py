@@ -32,7 +32,7 @@ def fit_traces_standalone(model=None,
                           n_rounds=1,
                           verbose=True,
                           param_init=None,
-                          reset=None, refractory=None, threshold=None,
+                          reset=None, refractory=False, threshold=None,
                           **params):
     '''
     Creates an interface for evaluation of parameters drawn by evolutionary
@@ -130,14 +130,9 @@ def fit_traces_standalone(model=None,
         model = model + Equations('total_error : %s' % repr(error_unit))
 
     # Population size for differential evolution
-    if refractory:
-        neurons = NeuronGroup(Ntraces * n_samples, model, method=method,
-                              threshold=threshold, reset=reset,
-                              refractory=refractory, name='neurons')
-    else:
-        neurons = NeuronGroup(Ntraces * n_samples, model, method=method,
-                              threshold=threshold, reset=reset,
-                              name='neurons')
+    neurons = NeuronGroup(Ntraces * n_samples, model, method=method,
+                          threshold=threshold, reset=reset,
+                          refractory=refractory, name='neurons')
 
     neurons.namespace['input_var'] = input_traces
     neurons.namespace['output_var'] = output_traces
@@ -176,8 +171,7 @@ def fit_traces_standalone(model=None,
     optimizer.initialize(parameter_names, **params)
     monitor = StateMonitor(neurons, output_var, record=True,    name='monitor')
 
-    network = Network()
-    network.add(neurons, monitor)
+    network = Network(neurons, monitor)
     simulator.initialize(network)
 
     # Run Optimization Loop
