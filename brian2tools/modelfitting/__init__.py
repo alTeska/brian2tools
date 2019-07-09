@@ -9,8 +9,8 @@ from .metric import *
 from .simulation import *
 from .utils import *
 
-__all__ = ['fit_traces', 'fit_traces_standalone',
+__all__ = ['fit_traces', 'fit_traces_standalone', 'fit_spikes', 
            'generate_fits',
            'Optimizer', 'NevergradOptimizer', 'SkoptOptimizer',
            'Simulation', 'RuntimeSimulation', 'CPPStandaloneSimulation',
-           'MSEMetric', 'Metric']
+           'MSEMetric', 'Metric', 'GammaFactor', 'get_gamma_factor', 'firing_rate']
