@@ -94,10 +94,10 @@ class MSEMetric(Metric):
 
 
 class GammaFactor(Metric):
-    def __init__(self):
-        super(Metric, self, delta, dt)
+    def __init__(self, delta, dt):
+        super(Metric, self)
         self.dt = dt
-        self.delta = delta
+        self.delta = delta #TODO: error check
 
     def traces_to_features(self, traces, output_traces):
         gamma_factors = []

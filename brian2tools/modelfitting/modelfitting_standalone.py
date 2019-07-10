@@ -1,12 +1,12 @@
-from numpy import mean, ones, array, where
+from numpy import mean, ones, array, where, arange
 from brian2 import (NeuronGroup,  defaultclock, second, get_device, StateMonitor,
-                    Network)
+                    SpikeMonitor, Network)
 from brian2.input import TimedArray
 from brian2.equations.equations import Equations
 from .simulation import RuntimeSimulation, CPPStandaloneSimulation
 from .metric import Metric
 
-__all__ = ['fit_traces_standalone']
+__all__ = ['fit_traces_standalone', 'fit_spikes']
 
 
 def make_dic(names, values):
@@ -210,7 +210,6 @@ def fit_traces_standalone(model=None,
 def fit_spikes(model=None,
                           input_var=None,
                           input=None,
-                          output_var=None,
                           output=None,
                           dt=None,
                           t_start=0*second,
@@ -248,11 +247,6 @@ def fit_spikes(model=None,
         raise Exception("%s is not an identifier in the model" % input_var)
 
     # Check output variable
-    if output_var not in model.names:
-        raise Exception("%s is not a model variable" % output_var)
-    if output.shape != input.shape:
-        raise Exception("Input and output must have the same size")
-
     Ntraces, Nsteps = input.shape
     duration = Nsteps * dt
 
@@ -261,10 +255,8 @@ def fit_spikes(model=None,
 
     input_unit = input.dim
     model = model + Equations(input_var + '= input_var(t, i % Ntraces) :\
-                              ' + "% s" % repr(input_unit))
+                               ' + "% s" % repr(input_unit))
 
-    # Add criterion with TimedArray
-    output_traces = TimedArray(output.transpose(), dt=dt)
 
     # Population size for differential evolution
     neurons = NeuronGroup(Ntraces * n_samples, model, method=method,
@@ -272,7 +264,6 @@ def fit_spikes(model=None,
                           refractory=refractory, name='neurons')
 
     neurons.namespace['input_var'] = input_traces
-    neurons.namespace['output_var'] = output_traces
     neurons.namespace['t_start'] = t_start
     neurons.namespace['Nsteps'] = Nsteps
     neurons.namespace['Ntraces'] = Ntraces
@@ -304,7 +295,11 @@ def fit_spikes(model=None,
         parameters = optimizer.ask(n_samples=n_samples)
         d_param = get_param_dic(parameters)
         simulator.run(duration, d_param, parameter_names)
-        # out2 = getattr(monitor, output_var)
+
+        traces = monitor.spike_trains()
+        # traces = []
+        # for i in arange(len(traces_dict)):
+        #     traces.append(traces_dict[i])
 
         # if isinstance(metric, Metric):
         #     out = getattr(simulator.network['monitor'], output_var)
