@@ -31,10 +31,6 @@ smonitor  = SpikeMonitor(group)
 run(60*ms)
 
 voltage = monitor.v[0]/mV
-
-plot(voltage);
-# plt.show()
-
 out_spikes = getattr(smonitor, 't') / ms
 print(out_spikes)
 
@@ -43,26 +39,50 @@ start_scope()
 eqs_fit = Equations('''
     dv/dt = (gL*(EL-v)+gL*DeltaT*exp((v-VT)/DeltaT) + I)/C : volt
     gL: siemens (constant)
+    C: farad (constant)
     ''',
     EL = -70*mV,
     VT = -50*mV,
     DeltaT = 2*mV,
-    C=1*nF)
+    # C=1*nF
+    )
 
 n_opt = NevergradOptimizer()
 metric = GammaFactor(100*ms, dt)
 inp_trace = np.array([input_current])
 
 # pass parameters to the NeuronGroup
-traces = fit_spikes(model=eqs_fit, input_var='I',
+result_dict, error = fit_spikes(model=eqs_fit, input_var='I',
                                    input=inp_trace * amp, output=out_spikes, dt=dt,
-                                   n_rounds=1, n_samples=5, optimizer=n_opt, metric=metric,
+                                   n_rounds=3, n_samples=30, optimizer=n_opt, metric=metric,
                                    threshold='v > -50*mV',
                                    reset='v = -70*mV',
                                    method='exponential_euler',
                                    param_init={'v': -70*mV},
                                    gL=[20*nS, 40*nS],
-                                   # C = [0.5*nS, 1.5*nS]
+                                   C = [0.5*nF, 1.5*nF]
                                    )
 
-print(traces)
+# print(result_dict, error)
+print('goal:', {'gL': [30*nS], 'C':[1*nF]})
+print('results:', result_dict['C']*farad, result_dict['gL']*siemens)
+# visualization of the results
+start_scope()
+group2 = NeuronGroup(1, eqs,
+                    threshold='v > -50*mV',
+                    reset='v = -70*mV',
+                    method='exponential_euler')
+group2.v = -70 * mV
+res = {'gL': [result_dict['gL']*siemens], 'C': [result_dict['C']*farad]}
+
+group2.set_states(res)
+
+monitor2 = StateMonitor(group2, 'v', record=True)
+smonitor2  = SpikeMonitor(group2)
+
+run(60*ms)
+voltage2 = monitor2.v[0]/mV
+
+plot(voltage);
+plot(voltage2);
+plt.show()

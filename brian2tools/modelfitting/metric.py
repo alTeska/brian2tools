@@ -1,5 +1,5 @@
 import abc
-from numpy import shape, array, sum, square, reshape, abs, amin, digitize, rint
+from numpy import shape, array, sum, square, reshape, abs, amin, digitize, rint, arange
 from brian2 import Hz
 
 def firing_rate(spikes):
@@ -30,7 +30,7 @@ def get_gamma_factor(source, target, delta, dt):
         matched_spikes = (diff <= delta_diff)
         coincidences = sum(matched_spikes)
     else:
-        indices = [amin(abs(source - target[i])) <= delta_diff for i in xrange(target_length)]
+        indices = [amin(abs(source - target[i])) <= delta_diff for i in arange(target_length)]
         coincidences = sum(indices)
 
     # Normalization of the coincidences count
@@ -56,7 +56,7 @@ class Metric(object):
         pass
 
     @abc.abstractmethod
-    def features_to_errors(self, features, Ntraces):
+    def features_to_errors(self, features, n_traces):
         """
         Function weights features/multiple errors into one final error fed
         back to the optimization algorithm
@@ -64,7 +64,7 @@ class Metric(object):
         pass
 
     @abc.abstractmethod
-    def calc(traces, output_traces, Ntraces):
+    def calc(traces, output_traces, n_traces):
         """Performs the error calculation"""
         pass
 
@@ -73,22 +73,27 @@ class MSEMetric(Metric):
     def __init__(self):
         super(Metric, self).__init__()
 
-    def traces_to_features(self, traces, output_traces):
-        mse = []
+    def traces_to_features(self, traces, output_traces, n_traces):
+        mse_dict = []
 
-        for trace in traces:
-            mse.append(sum(square(output_traces - trace)))
+        for i in arange(n_traces):
+            temp_out = output_traces[i]
+            temp_traces = traces[i::n_traces]
 
-        return mse
+            for trace in temp_traces:
+                mse = sum(square(temp_out - trace))
+                mse_dict.append(mse)
+
+        return mse_dict
 
     def features_to_errors(self, features, n_traces):
-        feat_arr = reshape(array(features), (int(len(features)/n_traces),
-                           n_traces))
-        return feat_arr.mean(axis=1)
+        feat_arr = reshape(array(features), (n_traces,
+                           int(len(features)/n_traces)))
+        return feat_arr.mean(axis=0)
 
-    def calc(self, traces, output_traces, Ntraces):
-        mse = self.traces_to_features(traces, output_traces)
-        errors = self.features_to_errors(mse, Ntraces)
+    def calc(self, traces, output_traces, n_traces):
+        mse = self.traces_to_features(traces, output_traces, n_traces)
+        errors = self.features_to_errors(mse, n_traces)
 
         return errors
 
@@ -99,22 +104,26 @@ class GammaFactor(Metric):
         self.dt = dt
         self.delta = delta #TODO: error check
 
-    def traces_to_features(self, traces, output_traces):
+    def traces_to_features(self, traces, output_traces, n_traces):
         gamma_factors = []
 
-        for trace in traces:
-            gf = get_gamma_factor(trace, output_traces,)
-            gamma_factors.append(g_factor)
+        for i in arange(n_traces):
+            temp_out = output_traces[i]
+            temp_traces = traces[i::n_traces]
+
+            for trace in temp_traces:
+                gf = get_gamma_factor(trace, temp_out, self.delta, self.dt)
+                gamma_factors.append(gf)
 
         return gamma_factors
 
     def features_to_errors(self, features, n_traces):
-        feat_arr = reshape(array(features), (int(len(features)/n_traces),
-                           n_traces))
-        return feat_arr.mean(axis=1)
+        feat_arr = reshape(array(features), (n_traces,
+                           int(len(features)/n_traces)))
+        return feat_arr.mean(axis=0)
 
-    def calc(self, traces, output_traces, Ntraces):
-        gamma_factors = self.traces_to_features(traces, output_traces)
-        errors = self.features_to_errors(gamma_factors, Ntraces)
+    def calc(self, traces, output_traces, n_traces):
+        gamma_factors = self.traces_to_features(traces, output_traces, n_traces)
+        errors = self.features_to_errors(gamma_factors, n_traces)
 
         return errors
