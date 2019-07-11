@@ -95,5 +95,5 @@ plt.figure()
 plot(np.arange(len(voltage))*dt/ms, voltage);
 plot(np.arange(len(voltage1))*dt/ms, voltage1);
 plt.title('scipy modified optimization')
-plt.savefig('plots/hh_fit_traces.png')
+# plt.savefig('plots/hh_fit_traces.png')
 plt.show()

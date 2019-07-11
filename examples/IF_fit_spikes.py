@@ -54,7 +54,7 @@ inp_trace = np.array([input_current])
 # pass parameters to the NeuronGroup
 result_dict, error = fit_spikes(model=eqs_fit, input_var='I',
                                    input=inp_trace * amp, output=out_spikes, dt=dt,
-                                   n_rounds=3, n_samples=30, optimizer=n_opt, metric=metric,
+                                   n_rounds=1, n_samples=5, optimizer=n_opt, metric=metric,
                                    threshold='v > -50*mV',
                                    reset='v = -70*mV',
                                    method='exponential_euler',

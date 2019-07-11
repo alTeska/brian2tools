@@ -75,14 +75,14 @@ eqs_fit = Equations('''
     # C=1*nF
     )
 
-n_opt = NevergradOptimizer('PSO')
-metric = GammaFactor(100*ms, dt)
+n_opt = NevergradOptimizer('DE')
+metric = GammaFactor(60*ms, dt)
 
 
 # pass parameters to the NeuronGroup
 result_dict, error = fit_spikes(model=eqs_fit, input_var='I', dt=dt,
                                 input=inp_trace * amp, output=out_spikes,
-                                n_rounds=1, n_samples=10, optimizer=n_opt,
+                                n_rounds=4, n_samples=30, optimizer=n_opt,
                                 metric=metric,
                                 threshold='v > -50*mV',
                                 reset='v = -70*mV',

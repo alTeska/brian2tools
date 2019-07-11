@@ -96,5 +96,5 @@ plt.figure()
 plot(np.arange(len(voltage))*dt/ms, voltage);
 plot(np.arange(len(voltage1))*dt/ms, voltage1);
 plt.title('skopt optimization')
-plt.savefig('plots/hh_skopt.png')
+# plt.savefig('plots/hh_skopt.png')
 plt.show()
