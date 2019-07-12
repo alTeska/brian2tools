@@ -1,3 +1,4 @@
+from types import FunctionType
 from numpy import mean, ones, array, arange
 from brian2 import (NeuronGroup,  defaultclock, get_device, Network,
                     StateMonitor, SpikeMonitor, ms, second)
@@ -148,7 +149,7 @@ def fit_traces_standalone(model=None,
                           metric=None,
                           n_samples=10,
                           n_rounds=1,
-                          verbose=True,
+                          callback=True,
                           param_init=None,
                           reset=None, refractory=False, threshold=None,
                           **params):
@@ -181,8 +182,9 @@ def fit_traces_standalone(model=None,
         Number of parameter samples to be optimized over.
     n_rounds: int
         Number of rounds to optimize over. (feedback provided over each round)
-    verbose: bool
-        Provide error feedback at each round
+    callback: function or bool
+        Provide custom feedback function func(res, errors, parameters, index)
+        if True returns default feedback
     param_init: dict
         Dictionary of variables to be initialized with respective value
     **params:
@@ -267,9 +269,11 @@ def fit_traces_standalone(model=None,
         result_dict = make_dic(parameter_names, res)
         error = min(errors)
 
-        if verbose:
+        if callback == True:
             print('round {} with error {}'.format(k, error))
-            print("resulting parameters:", result_dict)
+            print("parameters:", result_dict)
+        elif isinstance(callback, FunctionType):
+            callback(res, errors, res, k)
 
     return result_dict, error
 
@@ -284,7 +288,7 @@ def fit_spikes(model=None,
                metric=None,
                n_rounds=1,
                n_samples=10,
-               verbose=True,
+               callback=True,
                param_init=None,
                reset=None, refractory=False, threshold=None,
                **params):
@@ -314,8 +318,9 @@ def fit_spikes(model=None,
         Number of parameter samples to be optimized over.
     n_rounds: int
         Number of rounds to optimize over. (feedback provided over each round)
-    verbose: bool
-        Provide error feedback at each round
+    callback: function or bool
+        Provide custom feedback function func(res, errors, parameters, index)
+        if True returns default feedback
     param_init: dict
         Dictionary of variables to be initialized with respective value
     **params:
@@ -375,8 +380,10 @@ def fit_spikes(model=None,
         result_dict = make_dic(parameter_names, res)
         error = min(errors)
 
-        if verbose:
+        if callback == True:
             print('round {} with error {}'.format(k, error))
-            print("resulting parameters:", result_dict)
+            print("parameters:", result_dict)
+        elif isinstance(callback, FunctionType):
+            callback(res, errors, parameters, k)
 
     return result_dict, error

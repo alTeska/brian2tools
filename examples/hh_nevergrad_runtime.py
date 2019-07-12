@@ -96,6 +96,8 @@ gl   : siemens (constant)
 ''',
 Cm=1*ufarad*cm**-2 * area, El=-65*mV, EK=-90*mV, ENa=50*mV, VT=-63*mV)
 
+def callback(res, errors, parameters, index):
+    print('index {} errors minimum: {}'.format(index, min(errors)) )
 
 n_opt = NevergradOptimizer()
 # metric = MSEMetric()
@@ -108,6 +110,7 @@ res, error = fit_traces_standalone(model=eqs, input_var='I', output_var='v',
                                    n_rounds=1, n_samples=5, optimizer=n_opt, metric=metric,
                                    param_init={'v': -65*mV},
                                    method='exponential_euler',
+                                   callback=callback,
                                    gl=[1e-8*siemens*cm**-2 * area, 1e-3*siemens*cm**-2 * area],
                                    g_na=[1*msiemens*cm**-2 * area, 2000*msiemens*cm**-2 * area],
                                    g_kd=[1*msiemens*cm**-2 * area, 1000*msiemens*cm**-2 * area],

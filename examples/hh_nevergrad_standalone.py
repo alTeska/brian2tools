@@ -81,10 +81,12 @@ res, error = fit_traces_standalone(model=eqs, input_var='I', output_var='v',
                                    input=inp_trace * amp, output=[out_trace]*mV, dt=dt,
                                    param_init={'v': -65*mV},
                                    method='exponential_euler',
+                                   callback=True,
                                    gl=[1e-8*siemens*cm**-2 * area, 1e-4*siemens*cm**-2 * area],
                                    g_na=[1*msiemens*cm**-2 * area, 200*msiemens*cm**-2 * area],
                                    g_kd=[1*msiemens*cm**-2 * area, 100*msiemens*cm**-2 * area],
-                                   n_rounds=2, n_samples=5, optimizer=n_opt, metric=metric)
+                                   n_rounds=2, n_samples=5, optimizer=n_opt, metric=metric
+                                   )
 
 
 # give information to the optimizer
