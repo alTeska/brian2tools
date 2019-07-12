@@ -106,6 +106,10 @@ def fit_traces_standalone(model=None,
     if input_var not in model.identifiers:
         raise Exception("%s is not an identifier in the model" % input_var)
 
+    # Check Metric
+    if not (isinstance(metric, Metric) or metric is None):
+        raise Exception("metric has to be a child of class Metric or None")
+
     # Check output variable
     if output_var not in model.names:
         raise Exception("%s is not a model variable" % output_var)
@@ -168,10 +172,10 @@ def fit_traces_standalone(model=None,
         return array(err)
 
     # Set up Simulator and Optimizer
-    optimizer.initialize(parameter_names, **params)
-    monitor = StateMonitor(neurons, output_var, record=True,    name='monitor')
-
+    monitor = StateMonitor(neurons, output_var, record=True, name='monitor')
     network = Network(neurons, monitor)
+
+    optimizer.initialize(parameter_names, **params)
     simulator.initialize(network)
 
     # Run Optimization Loop
@@ -186,23 +190,17 @@ def fit_traces_standalone(model=None,
             errors = metric.calc(traces, output, Ntraces)
         elif metric is None:
             errors = calc_error()
-        else:
-            raise Exception("metric has to be of class Metric")
 
         optimizer.tell(parameters, errors)
         res = optimizer.recommend()
 
         # create output variables
         result_dict = make_dic(parameter_names, res)
-        index_param = where(array(parameters) == array(res))
-        ii = index_param[0]
-
-        # TODO: fix error
-        # print('index_param', index_param)
-        error = errors[ii]  # TODO: re-check
+        error = min(errors)
 
         if verbose:
             print('round {} with error {}'.format(k, error))
+            print("resulting parameters:", result_dict)
 
     return result_dict, error
 
@@ -249,7 +247,7 @@ def fit_spikes(model=None,
 
 
     if not isinstance(metric, Metric):
-        raise Exception("metric has to be of class Metric")
+        raise Exception("metric has to be a child of class Metric")
 
     # Check output variable
     Ntraces, Nsteps = input.shape
@@ -289,10 +287,10 @@ def fit_spikes(model=None,
         return d
 
     # Set up Simulator and Optimizer
-    optimizer.initialize(parameter_names, **params)
     monitor = SpikeMonitor(neurons, record=True, name='monitor')
-
     network = Network(neurons, monitor)
+
+    optimizer.initialize(parameter_names, **params)
     simulator.initialize(network)
 
     # Run Optimization Loop
@@ -313,15 +311,12 @@ def fit_spikes(model=None,
 
         # create output variables
         result_dict = make_dic(parameter_names, res)
-        index_param = where(array(parameters) == array(res))
-        ii = index_param[0]
-
-        # TODO: fix error
-        # print('index_param', index_param)
-        error = errors[ii]  # TODO: re-check
+        # create output variables
+        result_dict = make_dic(parameter_names, res)
+        error = min(errors)
 
         if verbose:
             print('round {} with error {}'.format(k, error))
-    return result_dict, error
+            print("resulting parameters:", result_dict)
 
-    # return traces
+    return result_dict, error

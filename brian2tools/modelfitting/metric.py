@@ -75,7 +75,7 @@ class MSEMetric(Metric):
         super(Metric, self).__init__()
 
     def traces_to_features(self, traces, output, n_traces):
-        mse_dict = []
+        mse_list = []
         output = atleast_2d(output)
 
         for i in arange(n_traces):
@@ -84,9 +84,9 @@ class MSEMetric(Metric):
 
             for trace in temp_traces:
                 mse = sum(square(temp_out - trace))
-                mse_dict.append(mse)
+                mse_list.append(mse)
 
-        return mse_dict
+        return mse_list
 
     def features_to_errors(self, features, n_traces):
         feat_arr = reshape(array(features), (n_traces,
