@@ -31,8 +31,8 @@ def get_param_dic(params, param_names, n_traces, n_samples):
 
 def get_spikes(monitor):
     """
-    Get spikes from spike monitor for each neuron, change from dict to a list,
-    remove units
+    Get spikes from spike monitor change format from dict to a list,
+    remove units.
     """
     spike_trains = monitor.spike_trains()
 
@@ -44,14 +44,21 @@ def get_spikes(monitor):
     return spikes
 
 
-def fit_setup(model=None, dt=None, param_init=None, input_var=None,
+def setup_fit(model=None, dt=None, param_init=None, input_var=None,
               metric=None):
     """
-    Function sets up simulator and checks the variables for fit_traces/
-    fit_spikes.
+    Function sets up simulator in one of the two availabel modes: runtime or standalone
+    (set in the script calling fit_traces/fit spikes) and checks the variables.
 
-    Returns:
-        simulator
+    Verifyies:
+        - if dt is set
+        - if input variables belong to the model
+        - if initialized parameters exsists in the model
+        - metric instance
+
+    Returns
+    -------
+    simulator : object ~brian2tools.modelfitting.Simulator
     """
     simulators = {
         'CPPStandaloneDevice': CPPStandaloneSimulation(),
@@ -60,26 +67,21 @@ def fit_setup(model=None, dt=None, param_init=None, input_var=None,
 
     simulator = simulators[get_device().__class__.__name__]
 
-    # dt must be set
     if dt is None:
         raise Exception('dt (sampling frequency of the input) must be set')
+        defaultclock.dt = dt
 
-    defaultclock.dt = dt
+    if input_var not in model.identifiers:
+        raise Exception("%s is not an identifier in the model" % input_var)
 
-    # Check initialization of params
+    if not (isinstance(metric, Metric) or metric is None):
+        raise Exception("metric has to be a child of class Metric or None")
+
     if param_init:
         for param, val in param_init.items():
             if not (param in model.identifiers or param in model.names):
                 raise Exception("%s is not a model variable or an identifier \
                                 in the model")
-
-    # Check input variable
-    if input_var not in model.identifiers:
-        raise Exception("%s is not an identifier in the model" % input_var)
-
-    # Check Metric
-    if not (isinstance(metric, Metric) or metric is None):
-        raise Exception("metric has to be a child of class Metric or None")
 
     return simulator
 
@@ -88,7 +90,13 @@ def setup_neuron_group(model, n_neurons, method, threshold, reset, refractory,
                        param_init, **namespace):
     """
     Setup neuron group, initialize required number of neurons, create namespace
-    and initite the parameters
+    and initite the parameters.
+
+    Returns
+    -------
+    neurons : object ~brian2.groups.neurongroup.NeuronGroup
+        group of neurons
+
     """
     neurons = NeuronGroup(n_neurons, model, method=method, threshold=threshold,
                           reset=reset, refractory=refractory, name='neurons')
@@ -117,9 +125,12 @@ def fit_traces_standalone(model=None,
                           reset=None, refractory=False, threshold=None,
                           **params):
     '''
-    Creates an interface for evaluation of parameters drawn by evolutionary
-    algorithms (throough ask/tell interfaces).
+    Creates an interface for model fitting of traces with parameters draw by
+    gradient-free algorithms (through ask/tell interfaces).
+    Input nad output have to have the same dimensions.
 
+    Initiates n_neurons = num input traces * num samples, to which drawn parameters get assigned
+    and  evaluates them in parallel.
 
     Parameters
     ----------
@@ -145,7 +156,7 @@ def fit_traces_standalone(model=None,
     verbose: bool
         Provide error feedback at each round
     param_init: dict
-        Dictionary of variables to be initialized with the value
+        Dictionary of variables to be initialized with respective value
     **params:
         bounds for each parameter
 
@@ -157,17 +168,15 @@ def fit_traces_standalone(model=None,
         error value for best parameter set
 
     TODO:
-     - resolve t_start
-     - tolerance
+     - feedback/calback (including tolrance)
 
     '''
-    # Check output variable
     if output_var not in model.names:
         raise Exception("%s is not a model variable" % output_var)
         if output.shape != input.shape:
             raise Exception("Input and output must have the same size")
 
-    simulator = fit_setup(model,dt, param_init, input_var, metric)
+    simulator = setup_fit(model,dt, param_init, input_var, metric)
 
     parameter_names = model.parameter_names
     Ntraces, Nsteps = input.shape
@@ -245,14 +254,57 @@ def fit_spikes(model=None,
                method=('linear', 'exponential_euler', 'euler'),
                optimizer=None,
                metric=None,
-               n_samples=10,
                n_rounds=1,
+               n_samples=10,
                verbose=True,
                param_init=None,
                reset=None, refractory=False, threshold=None,
                **params):
-    """Fit spikes"""
-    simulator = fit_setup(model=model, dt=dt, param_init=param_init,
+    '''
+    Creates an interface for model fitting of spike trains with parameters draw by
+    gradient-free algorithms (through ask/tell interfaces).
+    Input nad output dimensions don't have to agree. Output has to contain times of spikes.
+    Initiates n_neurons = num input traces * num samples, to which drawn parameters get assigned
+    and  evaluates them in parallel.
+
+    Parameters
+    ----------
+    model : `~brian2.equations.Equations` or string
+        The equations describing the model.
+    input_var : string
+        Input variable name.
+    input : input data as a 2D array
+    output : output data as a 2D list of arrays
+    dt : time step
+    method: string, optional
+        Integration method
+    optimizer: ~brian2tools.modelfitting.Optimizer children
+        Child of Optimizer class, specific for each library.
+    metric: ~brian2tools.modelfitting.Metric children
+        Child of Metric class, specifies optimization metric
+    n_samples: int
+        Number of parameter samples to be optimized over.
+    n_rounds: int
+        Number of rounds to optimize over. (feedback provided over each round)
+    verbose: bool
+        Provide error feedback at each round
+    param_init: dict
+        Dictionary of variables to be initialized with respective value
+    **params:
+        bounds for each parameter
+
+    Returns
+    -------
+    result_dict : dict
+        dictionary with best parameter set
+    error: float
+        error value for best parameter set
+
+    TODO:
+     - feedback/calback (including tolrance)
+
+    '''
+    simulator = setup_fit(model=model, dt=dt, param_init=param_init,
                           input_var=input_var, metric=metric)
 
     parameter_names = model.parameter_names
