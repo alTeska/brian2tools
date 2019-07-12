@@ -19,7 +19,7 @@ def make_dic(names, values):
 
 
 def get_param_dic(params, param_names, n_traces, n_samples):
-    """transform parameters into a dictionary of appropiate size"""
+    """Transform parameters into a dictionary of appropiate size"""
     params = array(params)
 
     d = dict()
@@ -27,6 +27,45 @@ def get_param_dic(params, param_names, n_traces, n_samples):
     for name, value in zip(param_names, params.T):
         d[name] = (ones((n_traces, n_samples)) * value).T.flatten()
     return d
+
+
+
+def fit_setup(model=None, dt=None, param_init=None, input_var=None, metric=None):
+    """
+    Function sets up simulator and checks the variables for fit_traces/fit_spikes.
+
+    Returns:
+        simulator
+    """
+    simulators = {
+        'CPPStandaloneDevice': CPPStandaloneSimulation(),
+        'RuntimeDevice': RuntimeSimulation()
+    }
+
+    simulator = simulators[get_device().__class__.__name__]
+
+    # dt must be set
+    if dt is None:
+        raise Exception('dt (sampling frequency of the input) must be set')
+
+    defaultclock.dt = dt
+
+    # Check initialization of params
+    if param_init:
+        for param, val in param_init.items():
+            if not (param in model.identifiers or param in model.names):
+                raise Exception("%s is not a model variable or an identifier \
+                                in the model")
+
+    # Check input variable
+    if input_var not in model.identifiers:
+        raise Exception("%s is not an identifier in the model" % input_var)
+
+    # Check Metric
+    if not (isinstance(metric, Metric) or metric is None):
+        raise Exception("metric has to be a child of class Metric or None")
+
+    return simulator
 
 
 def fit_traces_standalone(model=None,
@@ -79,7 +118,6 @@ def fit_traces_standalone(model=None,
     **params:
         bounds for each parameter
 
-
     Returns
     -------
     result_dict : dict
@@ -92,57 +130,29 @@ def fit_traces_standalone(model=None,
      - tolerance
 
     '''
-
-    simulators = {
-        'CPPStandaloneDevice': CPPStandaloneSimulation(),
-        'RuntimeDevice': RuntimeSimulation()
-    }
-
-    simulator = simulators[get_device().__class__.__name__]
-    parameter_names = model.parameter_names
-
-    # dt must be set
-    if dt is None:
-        raise Exception('dt (sampling frequency of the input) must be set')
-    defaultclock.dt = dt
-
-    # Check initialization of params
-    if param_init:
-        for param, val in param_init.items():
-            if not (param in model.identifiers or param in model.names):
-                raise Exception("%s is not a model variable or an identifier \
-                                in the model")
-
-    # Check input variable
-    if input_var not in model.identifiers:
-        raise Exception("%s is not an identifier in the model" % input_var)
-
-    # Check Metric
-    if not (isinstance(metric, Metric) or metric is None):
-        raise Exception("metric has to be a child of class Metric or None")
-
     # Check output variable
     if output_var not in model.names:
         raise Exception("%s is not a model variable" % output_var)
-    if output.shape != input.shape:
-        raise Exception("Input and output must have the same size")
+        if output.shape != input.shape:
+            raise Exception("Input and output must have the same size")
 
+    simulator = fit_setup(model=model, dt=dt, param_init=param_init,
+                          input_var=input_var, metric=metric)
+
+    parameter_names = model.parameter_names
     Ntraces, Nsteps = input.shape
     duration = Nsteps * dt
+    input_unit = input.dim
 
     # Replace input variable by TimedArray
     input_traces = TimedArray(input.transpose(), dt=dt)
+    output_traces = TimedArray(output.transpose(), dt=dt)
 
-    input_unit = input.dim
     model = model + Equations(input_var + '= input_var(t, i % Ntraces) :\
                               ' + "% s" % repr(input_unit))
 
-    # Add criterion with TimedArray
-    output_traces = TimedArray(output.transpose(), dt=dt)
-
     if metric is None:
-        error_unit = output.dim**2
-        model = model + Equations('total_error : %s' % repr(error_unit))
+        model = model + Equations('total_error : %s' % repr(output.dim**2))
 
     # Population size for differential evolution
     neurons = NeuronGroup(Ntraces * n_samples, model, method=method,
@@ -159,12 +169,11 @@ def fit_traces_standalone(model=None,
     if param_init:
         neurons.set_states(param_init)
 
-    # Record error
+    # Online metric calc
     if metric is None:
         neurons.run_regularly('total_error +=  (' + output_var + '-output_var\
                             (t,i % Ntraces))**2 * int(t>=t_start)', when='end')
 
-    # Initialize the values
     def calc_error():
         """calculate online error"""
         err = neurons.total_error/int((duration-t_start)/defaultclock.dt)
@@ -175,9 +184,8 @@ def fit_traces_standalone(model=None,
     # Set up Simulator and Optimizer
     monitor = StateMonitor(neurons, output_var, record=True, name='monitor')
     network = Network(neurons, monitor)
-
-    optimizer.initialize(parameter_names, **params)
     simulator.initialize(network)
+    optimizer.initialize(parameter_names, **params)
 
     # Run Optimization Loop
     for k in range(n_rounds):
@@ -185,7 +193,6 @@ def fit_traces_standalone(model=None,
         d_param = get_param_dic(parameters, parameter_names, Ntraces,
                                 n_samples)
         simulator.run(duration, d_param, parameter_names)
-        # out2 = getattr(monitor, output_var)
 
         if isinstance(metric, Metric):
             traces = getattr(simulator.network['monitor'], output_var)
@@ -223,42 +230,17 @@ def fit_spikes(model=None,
                reset=None, refractory=False, threshold=None,
                **params):
     """Fit spikes"""
+    simulator = fit_setup(model=model, dt=dt, param_init=param_init,
+                          input_var=input_var, metric=metric)
 
-    simulators = {
-        'CPPStandaloneDevice': CPPStandaloneSimulation(),
-        'RuntimeDevice': RuntimeSimulation()
-    }
-
-    simulator = simulators[get_device().__class__.__name__]
     parameter_names = model.parameter_names
-
-    # dt must be set
-    if dt is None:
-        raise Exception('dt (sampling frequency of the input) must be set')
-    defaultclock.dt = dt
-
-    # Check initialization of params
-    if param_init:
-        for param, val in param_init.items():
-            if not (param in model.identifiers or param in model.names):
-                raise Exception("%s is not a model variable or an identifier \
-                                in the model")
-
-    # Check input variable
-    if input_var not in model.identifiers:
-        raise Exception("%s is not an identifier in the model" % input_var)
-
-    if not isinstance(metric, Metric):
-        raise Exception("metric has to be a child of class Metric")
-
-    # Check output variable
     Ntraces, Nsteps = input.shape
     duration = Nsteps * dt
 
+    input_unit = input.dim
+
     # Replace input variable by TimedArray
     input_traces = TimedArray(input.transpose(), dt=dt)
-
-    input_unit = input.dim
     model = model + Equations(input_var + '= input_var(t, i % Ntraces) :\
                                ' + "% s" % repr(input_unit))
 
@@ -279,9 +261,8 @@ def fit_spikes(model=None,
     # Set up Simulator and Optimizer
     monitor = SpikeMonitor(neurons, record=True, name='monitor')
     network = Network(neurons, monitor)
-
-    optimizer.initialize(parameter_names, **params)
     simulator.initialize(network)
+    optimizer.initialize(parameter_names, **params)
 
     # Run Optimization Loop
     for k in range(n_rounds):
@@ -302,8 +283,6 @@ def fit_spikes(model=None,
         optimizer.tell(parameters, errors)
         res = optimizer.recommend()
 
-        # create output variables
-        result_dict = make_dic(parameter_names, res)
         # create output variables
         result_dict = make_dic(parameter_names, res)
         error = min(errors)

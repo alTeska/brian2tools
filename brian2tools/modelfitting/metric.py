@@ -39,6 +39,7 @@ def get_gamma_factor(source, target, delta, dt):
     NCoincAvg = 2 * delta * target_length * target_rate
     norm = .5*(1 - 2 * target_rate * delta)
     gamma = (coincidences - NCoincAvg)/(norm*(source_length + target_length))
+    
     return gamma
 
 
