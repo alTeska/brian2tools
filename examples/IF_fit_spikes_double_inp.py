@@ -59,8 +59,8 @@ inp_trace0 = np.array([input_current0])
 inp_trace1 = np.array([input_current1])
 
 inp_trace = np.concatenate((inp_trace0, inp_trace1))
-out_spikes = np.array(([out_spikes0, out_spikes1]))
-
+out_spikes = np.array([out_spikes0, out_spikes1])
+print('out_spikes', out_spikes)
 
 # FIT SPIKES
 start_scope()
@@ -76,13 +76,13 @@ eqs_fit = Equations('''
     )
 
 n_opt = NevergradOptimizer('DE')
-metric = GammaFactor(60*ms, dt)
+metric = GammaFactor(dt, 60*ms)
 
 
 # pass parameters to the NeuronGroup
 result_dict, error = fit_spikes(model=eqs_fit, input_var='I', dt=dt,
                                 input=inp_trace * amp, output=out_spikes,
-                                n_rounds=4, n_samples=30, optimizer=n_opt,
+                                n_rounds=2, n_samples=30, optimizer=n_opt,
                                 metric=metric,
                                 threshold='v > -50*mV',
                                 reset='v = -70*mV',

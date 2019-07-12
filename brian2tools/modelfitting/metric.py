@@ -1,15 +1,16 @@
 import abc
 from numpy import (shape, array, sum, square, reshape, abs, amin, digitize,
-                   rint, arange, atleast_2d)
+                   rint, arange, atleast_2d, NaN, float64)
 from brian2 import Hz
 
 def firing_rate(spikes):
     '''
     Rate of the spike train.
     '''
-    if len(spikes)<2:
+    if len(spikes) < 2:
         return NaN
     return (len(spikes) - 1) / (spikes[-1] - spikes[0])
+
 
 def get_gamma_factor(source, target, delta, dt):
     """Calculate gamma factor between source and tagret spike trains"""
@@ -39,6 +40,7 @@ def get_gamma_factor(source, target, delta, dt):
     norm = .5*(1 - 2 * target_rate * delta)
     gamma = (coincidences - NCoincAvg)/(norm*(source_length + target_length))
     return gamma
+
 
 class Metric(object):
     """
@@ -101,14 +103,18 @@ class MSEMetric(Metric):
 
 
 class GammaFactor(Metric):
-    def __init__(self, delta, dt):
+    def __init__(self, dt, delta=None):
         super(Metric, self)
+        if delta is None:
+            raise Exception('delta (time window for gamma factor), \
+                             has to be set')
+        self.delta = delta
         self.dt = dt
-        self.delta = delta   #TODO: error check
 
     def traces_to_features(self, traces, output, n_traces):
         gamma_factors = []
-        output = atleast_2d(output)
+        if type(output[0]) == float64:
+            output = atleast_2d(output)
 
         for i in arange(n_traces):
             temp_out = output[i]
@@ -116,7 +122,7 @@ class GammaFactor(Metric):
 
             for trace in temp_traces:
                 gf = get_gamma_factor(trace, temp_out, self.delta, self.dt)
-                gamma_factors.append(gf)
+                gamma_factors.append(1 - gf)
 
         return gamma_factors
 

@@ -1,4 +1,4 @@
-from numpy import mean, ones, array, where, arange
+from numpy import mean, ones, array, arange
 from brian2 import (NeuronGroup,  defaultclock, second, get_device, StateMonitor,
                     SpikeMonitor, Network, ms)
 from brian2.input import TimedArray
@@ -17,6 +17,7 @@ def make_dic(names, values):
 
     return result_dict
 
+
 def get_param_dic(params, param_names, n_traces, n_samples):
     """transform parameters into a dictionary of appropiate size"""
     params = array(params)
@@ -26,8 +27,6 @@ def get_param_dic(params, param_names, n_traces, n_samples):
     for name, value in zip(param_names, params.T):
         d[name] = (ones((n_traces, n_samples)) * value).T.flatten()
     return d
-
-
 
 
 def fit_traces_standalone(model=None,
@@ -183,7 +182,8 @@ def fit_traces_standalone(model=None,
     # Run Optimization Loop
     for k in range(n_rounds):
         parameters = optimizer.ask(n_samples=n_samples)
-        d_param = get_param_dic(parameters, parameter_names, Ntraces, n_samples)
+        d_param = get_param_dic(parameters, parameter_names, Ntraces,
+                                n_samples)
         simulator.run(duration, d_param, parameter_names)
         # out2 = getattr(monitor, output_var)
 
@@ -207,8 +207,6 @@ def fit_traces_standalone(model=None,
     return result_dict, error
 
 
-
-
 def fit_spikes(model=None,
                input_var=None,
                input=None,
@@ -225,6 +223,7 @@ def fit_spikes(model=None,
                reset=None, refractory=False, threshold=None,
                **params):
     """Fit spikes"""
+
     simulators = {
         'CPPStandaloneDevice': CPPStandaloneSimulation(),
         'RuntimeDevice': RuntimeSimulation()
@@ -249,7 +248,6 @@ def fit_spikes(model=None,
     if input_var not in model.identifiers:
         raise Exception("%s is not an identifier in the model" % input_var)
 
-
     if not isinstance(metric, Metric):
         raise Exception("metric has to be a child of class Metric")
 
@@ -263,7 +261,6 @@ def fit_spikes(model=None,
     input_unit = input.dim
     model = model + Equations(input_var + '= input_var(t, i % Ntraces) :\
                                ' + "% s" % repr(input_unit))
-
 
     # Population size for differential evolution
     neurons = NeuronGroup(Ntraces * n_samples, model, method=method,
@@ -290,7 +287,8 @@ def fit_spikes(model=None,
     for k in range(n_rounds):
         parameters = optimizer.ask(n_samples=n_samples)
 
-        d_param = get_param_dic(parameters, parameter_names, Ntraces, n_samples)
+        d_param = get_param_dic(parameters, parameter_names, Ntraces,
+                                n_samples)
 
         simulator.run(duration, d_param, parameter_names)
 
