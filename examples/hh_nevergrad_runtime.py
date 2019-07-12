@@ -98,7 +98,8 @@ Cm=1*ufarad*cm**-2 * area, El=-65*mV, EK=-90*mV, ENa=50*mV, VT=-63*mV)
 
 
 n_opt = NevergradOptimizer()
-metric = MSEMetric()
+# metric = MSEMetric()
+metric = None
 
 
 # pass parameters to the NeuronGroup

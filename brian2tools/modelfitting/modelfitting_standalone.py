@@ -109,6 +109,34 @@ def setup_neuron_group(model, n_neurons, method, threshold, reset, refractory,
     return neurons
 
 
+def opt_iter(simulator, optimizer, metric, parameter_names, n_samples, Ntraces,
+             duration, output, calc_errors, *args):
+    """
+    Function performs all operations required for one iteration of optimization.
+    Drawing parameters, setting them to simulator and calulating the error.
+
+    Returns
+    -------
+    results : list
+        recommended parameters
+    parameters: 2D list
+        drawn parameters
+    errors: list
+        calculated errors
+    """
+    parameters = optimizer.ask(n_samples=n_samples)
+
+    d_param = get_param_dic(parameters, parameter_names, Ntraces,
+                            n_samples)
+    simulator.run(duration, d_param, parameter_names)
+    errors = calc_errors(metric, simulator, output, *args)
+
+    optimizer.tell(parameters, errors)
+    results = optimizer.recommend()
+
+    return results, parameters, errors
+
+
 def fit_traces_standalone(model=None,
                           input_var=None,
                           input=None,
@@ -206,7 +234,7 @@ def fit_traces_standalone(model=None,
         neurons.run_regularly('total_error +=  (' + output_var + '-output_var\
                             (t,i % Ntraces))**2 * int(t>=t_start)', when='end')
 
-        def calc_error():
+        def calc_online_error():
             """calculate online error"""
             err = neurons.total_error/int((duration-t_start)/defaultclock.dt)
             err = mean(err.reshape((n_samples, Ntraces)), axis=1)
@@ -219,21 +247,21 @@ def fit_traces_standalone(model=None,
     simulator.initialize(network)
     optimizer.initialize(parameter_names, **params)
 
-    # Run Optimization Loop
-    for k in range(n_rounds):
-        parameters = optimizer.ask(n_samples=n_samples)
-        d_param = get_param_dic(parameters, parameter_names, Ntraces,
-                                n_samples)
-        simulator.run(duration, d_param, parameter_names)
-
+    def calc_errors(metric, simulator, output, output_var):
+        """Returns errors after simulation."""
         if isinstance(metric, Metric):
             traces = getattr(simulator.network['monitor'], output_var)
             errors = metric.calc(traces, output, Ntraces)
         elif metric is None:
-            errors = calc_error()
+            errors = calc_online_error()
 
-        optimizer.tell(parameters, errors)
-        res = optimizer.recommend()
+        return errors
+
+    # Run Optimization Loop
+    for k in range(n_rounds):
+        res, parameters, errors = opt_iter(simulator, optimizer, metric,
+                                           parameter_names, n_samples, Ntraces,
+                                           duration, output, calc_errors, output_var)
 
         # create output variables
         result_dict = make_dic(parameter_names, res)
@@ -330,20 +358,18 @@ def fit_spikes(model=None,
     simulator.initialize(network)
     optimizer.initialize(parameter_names, **params)
 
+
+    def calc_errors(metric, simulator, output):
+        spikes = get_spikes(simulator.network['monitor'])
+        errors = metric.calc(spikes, output, Ntraces)
+
+        return errors
+
     # Run Optimization Loop
     for k in range(n_rounds):
-        parameters = optimizer.ask(n_samples=n_samples)
-
-        d_param = get_param_dic(parameters, parameter_names, Ntraces,
-                                n_samples)
-
-        simulator.run(duration, d_param, parameter_names)
-
-        spikes = get_spikes(monitor)
-
-        errors = metric.calc(spikes, output, Ntraces)
-        optimizer.tell(parameters, errors)
-        res = optimizer.recommend()
+        res, parameters, errors = opt_iter(simulator, optimizer, metric,
+                                           parameter_names, n_samples, Ntraces,
+                                           duration, output, calc_errors)
 
         # create output variables
         result_dict = make_dic(parameter_names, res)
