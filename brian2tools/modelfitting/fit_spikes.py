@@ -15,6 +15,7 @@ def fit_spikes(model=None,
                reset=None, refractory=False, threshold=None,
                **params):
     """Fit spikes"""
+
     simulators = {
         'CPPStandaloneDevice': CPPStandaloneSimulation(),
         'RuntimeDevice': RuntimeSimulation()
@@ -39,7 +40,6 @@ def fit_spikes(model=None,
     if input_var not in model.identifiers:
         raise Exception("%s is not an identifier in the model" % input_var)
 
-
     if not isinstance(metric, Metric):
         raise Exception("metric has to be a child of class Metric")
 
@@ -53,7 +53,6 @@ def fit_spikes(model=None,
     input_unit = input.dim
     model = model + Equations(input_var + '= input_var(t, i % Ntraces) :\
                                ' + "% s" % repr(input_unit))
-
 
     # Population size for differential evolution
     neurons = NeuronGroup(Ntraces * n_samples, model, method=method,
@@ -69,17 +68,6 @@ def fit_spikes(model=None,
     if param_init:
         neurons.set_states(param_init)
 
-    # Initialize the values
-    def get_param_dic(parameters):
-        """transform parameters into a dictionary of appropiate size"""
-        parameters = array(parameters)
-
-        d = dict()
-
-        for name, value in zip(parameter_names, parameters.T):
-            d[name] = (ones((Ntraces, n_samples)) * value).T.flatten()
-        return d
-
     # Set up Simulator and Optimizer
     monitor = SpikeMonitor(neurons, record=True, name='monitor')
     network = Network(neurons, monitor)
@@ -90,7 +78,10 @@ def fit_spikes(model=None,
     # Run Optimization Loop
     for k in range(n_rounds):
         parameters = optimizer.ask(n_samples=n_samples)
-        d_param = get_param_dic(parameters)
+
+        d_param = get_param_dic(parameters, parameter_names, Ntraces,
+                                n_samples)
+
         simulator.run(duration, d_param, parameter_names)
 
         spike_trains = monitor.spike_trains()
@@ -105,15 +96,12 @@ def fit_spikes(model=None,
 
         # create output variables
         result_dict = make_dic(parameter_names, res)
-        index_param = where(array(parameters) == array(res))
-        ii = index_param[0]
-
-        # TODO: fix error
-        # print('index_param', index_param)
-        error = errors[ii]  # TODO: re-check
+        # create output variables
+        result_dict = make_dic(parameter_names, res)
+        error = min(errors)
 
         if verbose:
             print('round {} with error {}'.format(k, error))
-    return result_dict, error
+            print("resulting parameters:", result_dict)
 
-    # return traces
+    return result_dict, error

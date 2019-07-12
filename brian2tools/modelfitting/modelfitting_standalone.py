@@ -1,6 +1,6 @@
 from numpy import mean, ones, array, arange
-from brian2 import (NeuronGroup,  defaultclock, second, get_device, StateMonitor,
-                    SpikeMonitor, Network, ms)
+from brian2 import (NeuronGroup,  defaultclock, get_device, Network,
+                    StateMonitor, SpikeMonitor, ms, second)
 from brian2.input import TimedArray
 from brian2.equations.equations import Equations
 from .simulation import RuntimeSimulation, CPPStandaloneSimulation
@@ -29,10 +29,26 @@ def get_param_dic(params, param_names, n_traces, n_samples):
     return d
 
 
-
-def fit_setup(model=None, dt=None, param_init=None, input_var=None, metric=None):
+def get_spikes(monitor):
     """
-    Function sets up simulator and checks the variables for fit_traces/fit_spikes.
+    Get spikes from spike monitor for each neuron, change from dict to a list,
+    remove units
+    """
+    spike_trains = monitor.spike_trains()
+
+    spikes = []
+    for i in arange(len(spike_trains)):
+        spike_list = spike_trains[i] / ms
+        spikes.append(spike_list)
+
+    return spikes
+
+
+def fit_setup(model=None, dt=None, param_init=None, input_var=None,
+              metric=None):
+    """
+    Function sets up simulator and checks the variables for fit_traces/
+    fit_spikes.
 
     Returns:
         simulator
@@ -68,13 +84,29 @@ def fit_setup(model=None, dt=None, param_init=None, input_var=None, metric=None)
     return simulator
 
 
+def setup_neuron_group(model, n_neurons, method, threshold, reset, refractory,
+                       param_init, **namespace):
+    """
+    Setup neuron group, initialize required number of neurons, create namespace
+    and initite the parameters
+    """
+    neurons = NeuronGroup(n_neurons, model, method=method, threshold=threshold,
+                          reset=reset, refractory=refractory, name='neurons')
+    for name in namespace:
+        neurons.namespace[name] = namespace[name]
+
+    if param_init:
+        neurons.set_states(param_init)
+
+    return neurons
+
+
 def fit_traces_standalone(model=None,
                           input_var=None,
                           input=None,
                           output_var=None,
                           output=None,
                           dt=None,
-                          t_start=0*second,
                           method=('linear', 'exponential_euler', 'euler'),
                           optimizer=None,
                           metric=None,
@@ -100,7 +132,6 @@ def fit_traces_standalone(model=None,
         Output variable name.
     output : output data as a 2D array
     dt : time step
-    t_start: starting time of error measurement.
     method: string, optional
         Integration method
     optimizer: ~brian2tools.modelfitting.Optimizer children
@@ -136,50 +167,42 @@ def fit_traces_standalone(model=None,
         if output.shape != input.shape:
             raise Exception("Input and output must have the same size")
 
-    simulator = fit_setup(model=model, dt=dt, param_init=param_init,
-                          input_var=input_var, metric=metric)
+    simulator = fit_setup(model,dt, param_init, input_var, metric)
 
     parameter_names = model.parameter_names
     Ntraces, Nsteps = input.shape
     duration = Nsteps * dt
-    input_unit = input.dim
-
-    # Replace input variable by TimedArray
-    input_traces = TimedArray(input.transpose(), dt=dt)
-    output_traces = TimedArray(output.transpose(), dt=dt)
-
-    model = model + Equations(input_var + '= input_var(t, i % Ntraces) :\
-                              ' + "% s" % repr(input_unit))
+    n_neurons = Ntraces * n_samples
 
     if metric is None:
         model = model + Equations('total_error : %s' % repr(output.dim**2))
 
-    # Population size for differential evolution
-    neurons = NeuronGroup(Ntraces * n_samples, model, method=method,
-                          threshold=threshold, reset=reset,
-                          refractory=refractory, name='neurons')
+    # Replace input variable by TimedArray
+    output_traces = TimedArray(output.transpose(), dt=dt)
+    input_traces = TimedArray(input.transpose(), dt=dt)
+    model = model + Equations(input_var + '= input_var(t, i % Ntraces) :\
+                              ' + "% s" % repr(input.dim))
 
-    neurons.namespace['input_var'] = input_traces
-    neurons.namespace['output_var'] = output_traces
-    neurons.namespace['t_start'] = t_start
-    neurons.namespace['Nsteps'] = Nsteps
-    neurons.namespace['Ntraces'] = Ntraces
-
-    # initalize the values
-    if param_init:
-        neurons.set_states(param_init)
+    # Setup NeuronGroup
+    neurons = setup_neuron_group(model, n_neurons, method, threshold, reset,
+                                 refractory, param_init,
+                                 input_var=input_traces,
+                                 output_var=output_traces,
+                                 Ntraces=Ntraces)
 
     # Online metric calc
     if metric is None:
+        t_start = 0*second
+        neurons.namespace['t_start'] = t_start
         neurons.run_regularly('total_error +=  (' + output_var + '-output_var\
                             (t,i % Ntraces))**2 * int(t>=t_start)', when='end')
 
-    def calc_error():
-        """calculate online error"""
-        err = neurons.total_error/int((duration-t_start)/defaultclock.dt)
-        err = mean(err.reshape((n_samples, Ntraces)), axis=1)
+        def calc_error():
+            """calculate online error"""
+            err = neurons.total_error/int((duration-t_start)/defaultclock.dt)
+            err = mean(err.reshape((n_samples, Ntraces)), axis=1)
 
-        return array(err)
+            return array(err)
 
     # Set up Simulator and Optimizer
     monitor = StateMonitor(neurons, output_var, record=True, name='monitor')
@@ -219,7 +242,6 @@ def fit_spikes(model=None,
                input=None,
                output=None,
                dt=None,
-               t_start=0*second,
                method=('linear', 'exponential_euler', 'euler'),
                optimizer=None,
                metric=None,
@@ -237,26 +259,18 @@ def fit_spikes(model=None,
     Ntraces, Nsteps = input.shape
     duration = Nsteps * dt
 
-    input_unit = input.dim
+    n_neurons = Ntraces * n_samples
 
     # Replace input variable by TimedArray
     input_traces = TimedArray(input.transpose(), dt=dt)
     model = model + Equations(input_var + '= input_var(t, i % Ntraces) :\
-                               ' + "% s" % repr(input_unit))
+                               ' + "% s" % repr(input.dim))
 
     # Population size for differential evolution
-    neurons = NeuronGroup(Ntraces * n_samples, model, method=method,
-                          threshold=threshold, reset=reset,
-                          refractory=refractory, name='neurons')
-
-    neurons.namespace['input_var'] = input_traces
-    neurons.namespace['t_start'] = t_start
-    neurons.namespace['Nsteps'] = Nsteps
-    neurons.namespace['Ntraces'] = Ntraces
-
-    # initalize the values
-    if param_init:
-        neurons.set_states(param_init)
+    neurons = setup_neuron_group(model, n_neurons, method, threshold, reset,
+                                 refractory, param_init,
+                                 input_var=input_traces,
+                                 Ntraces=Ntraces)
 
     # Set up Simulator and Optimizer
     monitor = SpikeMonitor(neurons, record=True, name='monitor')
@@ -273,13 +287,9 @@ def fit_spikes(model=None,
 
         simulator.run(duration, d_param, parameter_names)
 
-        spike_trains = monitor.spike_trains()
-        traces = []
-        for i in arange(len(spike_trains)):
-            trace = spike_trains[i] / ms
-            traces.append(trace)
+        spikes = get_spikes(monitor)
 
-        errors = metric.calc(traces, output, Ntraces)
+        errors = metric.calc(spikes, output, Ntraces)
         optimizer.tell(parameters, errors)
         res = optimizer.recommend()
 
