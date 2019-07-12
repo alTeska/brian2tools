@@ -17,6 +17,18 @@ def make_dic(names, values):
 
     return result_dict
 
+def get_param_dic(params, param_names, n_traces, n_samples):
+    """transform parameters into a dictionary of appropiate size"""
+    params = array(params)
+
+    d = dict()
+
+    for name, value in zip(param_names, params.T):
+        d[name] = (ones((n_traces, n_samples)) * value).T.flatten()
+    return d
+
+
+
 
 def fit_traces_standalone(model=None,
                           input_var=None,
@@ -154,16 +166,6 @@ def fit_traces_standalone(model=None,
                             (t,i % Ntraces))**2 * int(t>=t_start)', when='end')
 
     # Initialize the values
-    def get_param_dic(parameters):
-        """transform parameters into a dictionary of appropiate size"""
-        parameters = array(parameters)
-
-        d = dict()
-
-        for name, value in zip(parameter_names, parameters.T):
-            d[name] = (ones((Ntraces, n_samples)) * value).T.flatten()
-        return d
-
     def calc_error():
         """calculate online error"""
         err = neurons.total_error/int((duration-t_start)/defaultclock.dt)
@@ -181,7 +183,7 @@ def fit_traces_standalone(model=None,
     # Run Optimization Loop
     for k in range(n_rounds):
         parameters = optimizer.ask(n_samples=n_samples)
-        d_param = get_param_dic(parameters)
+        d_param = get_param_dic(parameters, parameter_names, Ntraces, n_samples)
         simulator.run(duration, d_param, parameter_names)
         # out2 = getattr(monitor, output_var)
 
@@ -203,6 +205,8 @@ def fit_traces_standalone(model=None,
             print("resulting parameters:", result_dict)
 
     return result_dict, error
+
+
 
 
 def fit_spikes(model=None,
@@ -275,17 +279,6 @@ def fit_spikes(model=None,
     if param_init:
         neurons.set_states(param_init)
 
-    # Initialize the values
-    def get_param_dic(parameters):
-        """transform parameters into a dictionary of appropiate size"""
-        parameters = array(parameters)
-
-        d = dict()
-
-        for name, value in zip(parameter_names, parameters.T):
-            d[name] = (ones((Ntraces, n_samples)) * value).T.flatten()
-        return d
-
     # Set up Simulator and Optimizer
     monitor = SpikeMonitor(neurons, record=True, name='monitor')
     network = Network(neurons, monitor)
@@ -296,7 +289,9 @@ def fit_spikes(model=None,
     # Run Optimization Loop
     for k in range(n_rounds):
         parameters = optimizer.ask(n_samples=n_samples)
-        d_param = get_param_dic(parameters)
+
+        d_param = get_param_dic(parameters, parameter_names, Ntraces, n_samples)
+
         simulator.run(duration, d_param, parameter_names)
 
         spike_trains = monitor.spike_trains()
