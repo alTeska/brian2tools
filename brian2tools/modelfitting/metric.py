@@ -1,19 +1,21 @@
 import abc
-from numpy import (shape, array, sum, square, reshape, abs, amin, digitize,
-                   rint, arange, atleast_2d, NaN, float64)
 from brian2 import Hz
+from numpy import (array, sum, square, reshape, abs, amin, digitize,
+                   rint, arange, atleast_2d, NaN, float64)
+
 
 def firing_rate(spikes):
-    '''
-    Rate of the spike train.
-    '''
+    '''Rate of the spike train'''
     if len(spikes) < 2:
         return NaN
     return (len(spikes) - 1) / (spikes[-1] - spikes[0])
 
 
 def get_gamma_factor(source, target, delta, dt):
-    """Calculate gamma factor between source and tagret spike trains"""
+    """
+    Calculate gamma factor between source and tagret spike trains,
+    with precision delta.
+    """
     source = array(source)
     target = array(target)
     target_rate = firing_rate(target) * Hz
@@ -39,7 +41,7 @@ def get_gamma_factor(source, target, delta, dt):
     NCoincAvg = 2 * delta * target_length * target_rate
     norm = .5*(1 - 2 * target_rate * delta)
     gamma = (coincidences - NCoincAvg)/(norm*(source_length + target_length))
-    
+
     return gamma
 
 
@@ -55,12 +57,12 @@ class Metric(object):
         pass
 
     @abc.abstractmethod
-    def traces_to_features(self, traces, output):
+    def get_features(self, traces, output):
         """Function calculates features or errors for each of the traces"""
         pass
 
     @abc.abstractmethod
-    def features_to_errors(self, features, n_traces):
+    def get_errors(self, features, n_traces):
         """
         Function weights features/multiple errors into one final error fed
         back to the optimization algorithm
@@ -68,17 +70,21 @@ class Metric(object):
         pass
 
     @abc.abstractmethod
-    def calc(traces, output, n_traces):
-        """Performs the error calculation"""
-        pass
+    def calc(self, traces, output, n_traces):
+        """Performs the error and calculation"""
+        self.get_features(traces, output, n_traces)
+        self.get_errors(self.features, n_traces)
+
+        return self.errors
 
 
 class MSEMetric(Metric):
+    """Mean Square Error between goal and calculated output"""
     def __init__(self):
         super(Metric, self).__init__()
 
-    def traces_to_features(self, traces, output, n_traces):
-        mse_list = []
+    def get_features(self, traces, output, n_traces):
+        mselist = []
         output = atleast_2d(output)
 
         for i in arange(n_traces):
@@ -87,24 +93,29 @@ class MSEMetric(Metric):
 
             for trace in temp_traces:
                 mse = sum(square(temp_out - trace))
-                mse_list.append(mse)
+                mselist.append(mse)
 
-        return mse_list
+        self.features = mselist
 
-    def features_to_errors(self, features, n_traces):
+    def get_errors(self, features, n_traces):
         feat_arr = reshape(array(features), (n_traces,
                            int(len(features)/n_traces)))
-        return feat_arr.mean(axis=0)
-
-    def calc(self, traces, output, n_traces):
-        mse = self.traces_to_features(traces, output, n_traces)
-        errors = self.features_to_errors(mse, n_traces)
-
-        return errors
+        self.errors = feat_arr.mean(axis=0)
 
 
 class GammaFactor(Metric):
+    '''
+    Calculate gamma factors between goal and calculated spike trains, with
+    precision delta.
+
+    Reference:
+    R. Jolivet et al., 'A benchmark test for a quantitative assessment of
+    simple neuron models',
+    Journal of Neuroscience Methods 169, no. 2 (2008): 417-424.
+    '''
+
     def __init__(self, dt, delta=None):
+        '''Initialize the metric with time windo delta and time step dt'''
         super(Metric, self)
         if delta is None:
             raise Exception('delta (time window for gamma factor), \
@@ -112,7 +123,7 @@ class GammaFactor(Metric):
         self.delta = delta
         self.dt = dt
 
-    def traces_to_features(self, traces, output, n_traces):
+    def get_features(self, traces, output, n_traces):
         gamma_factors = []
         if type(output[0]) == float64:
             output = atleast_2d(output)
@@ -125,15 +136,9 @@ class GammaFactor(Metric):
                 gf = get_gamma_factor(trace, temp_out, self.delta, self.dt)
                 gamma_factors.append(1 - gf)
 
-        return gamma_factors
+        self.features = gamma_factors
 
-    def features_to_errors(self, features, n_traces):
+    def get_errors(self, features, n_traces):
         feat_arr = reshape(array(features), (n_traces,
                            int(len(features)/n_traces)))
-        return feat_arr.mean(axis=0)
-
-    def calc(self, traces, output, n_traces):
-        gamma_factors = self.traces_to_features(traces, output, n_traces)
-        errors = self.features_to_errors(gamma_factors, n_traces)
-
-        return errors
+        self.errors = feat_arr.mean(axis=0)
