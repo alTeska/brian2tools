@@ -15,10 +15,10 @@ def test_initialize_parameter():
 def test_initialize_neurons():
     pass
 
-def test_set_parameter_value():
+def test_run_again():
     pass
 
-def test_run_again():
+def test_set_parameter_value():
     pass
 
 def test_set_states():

@@ -5,7 +5,7 @@ from numpy import (array, sum, square, reshape, abs, amin, digitize,
 
 
 def firing_rate(spikes):
-    '''Rate of the spike train'''
+    '''Raturns rate of the spike train'''
     if len(spikes) < 2:
         return NaN
     return (len(spikes) - 1) / (spikes[-1] - spikes[0])
@@ -15,6 +15,21 @@ def get_gamma_factor(source, target, delta, dt):
     """
     Calculate gamma factor between source and tagret spike trains,
     with precision delta.
+
+    Parameters
+    ----------
+    source: list/array
+        source trace, goal performance
+    target: list/array
+        target trace
+    delta: float * ms
+        time window
+    dt: float * ms
+        time step
+
+    Returns
+    -------
+        gamma factor: float
     """
     source = array(source)
     target = array(target)
@@ -49,29 +64,50 @@ class Metric(object):
     """
     Metic acstract class to define functions required for a custom metric
     To be used with modelfitting fit_traces.
+
+    TODO: metric.weights
     """
     __metaclass__= abc.ABCMeta
 
     def __init__(self, **kwds):
-        """Initialize the metric"""
+        """Initialize the metric."""
         pass
 
     @abc.abstractmethod
     def get_features(self, traces, output):
-        """Function calculates features or errors for each of the traces"""
+        """Function calculates features / errors for all of the traces"""
         pass
 
     @abc.abstractmethod
     def get_errors(self, features, n_traces):
         """
-        Function weights features/multiple errors into one final error fed
-        back to the optimization algorithm
+        Function weights features/multiple errors into one final error per each
+        set of parameters
         """
         pass
 
     @abc.abstractmethod
     def calc(self, traces, output, n_traces):
-        """Performs the error and calculation"""
+        """
+        Perform the error calculation across all parameters,
+        calculate error between each output trace and corresponding
+        simulation. You can also access metric.features, metric.errors.
+
+        Parameters
+        ----------
+        traces: 2D array
+            traces to be evaluated
+        output: array
+            goal traces
+        n_traces:
+            number of input traces
+
+        Returns
+        -------
+        errors: array
+            weigheted/mean error for each set of parameters
+
+        """
         self.get_features(traces, output, n_traces)
         self.get_errors(self.features, n_traces)
 
@@ -118,8 +154,8 @@ class GammaFactor(Metric):
         '''Initialize the metric with time windo delta and time step dt'''
         super(Metric, self)
         if delta is None:
-            raise Exception('delta (time window for gamma factor), \
-                             has to be set')
+            raise AssertionError('delta (time window for gamma factor), \
+                                 has to be set to ms')
         self.delta = delta
         self.dt = dt
 
@@ -134,7 +170,7 @@ class GammaFactor(Metric):
 
             for trace in temp_traces:
                 gf = get_gamma_factor(trace, temp_out, self.delta, self.dt)
-                gamma_factors.append(1 - gf)
+                gamma_factors.append(abs(1 - gf))
 
         self.features = gamma_factors
 

@@ -48,8 +48,9 @@ def get_spikes(monitor):
 def setup_fit(model=None, dt=None, param_init=None, input_var=None,
               metric=None):
     """
-    Function sets up simulator in one of the two availabel modes: runtime or standalone
-    (set in the script calling fit_traces/fit spikes) and checks the variables.
+    Function sets up simulator in one of the two availabel modes: runtime or
+    standalone (set in the script calling fit_traces/fit spikes) and checks
+    the variables.
 
     Verifyies:
         - if dt is set
@@ -110,8 +111,8 @@ def setup_neuron_group(model, n_neurons, method, threshold, reset, refractory,
     return neurons
 
 
-def optim_iter(simulator, optimizer, metric, parameter_names, n_samples, Ntraces,
-             duration, output, calc_errors, *args):
+def optim_iter(simulator, optimizer, metric, parameter_names, n_samples,
+               Ntraces, duration, output, calc_errors, *args):
     """
     Function performs all operations required for one iteration of optimization.
     Drawing parameters, setting them to simulator and calulating the error.
@@ -269,7 +270,7 @@ def fit_traces_standalone(model=None,
         result_dict = make_dic(parameter_names, res)
         error = min(errors)
 
-        if callback == True:
+        if callback is True:
             print('round {} with error {}'.format(k, error))
             print("parameters:", result_dict)
         elif isinstance(callback, FunctionType):
@@ -293,11 +294,11 @@ def fit_spikes(model=None,
                reset=None, refractory=False, threshold=None,
                **params):
     '''
-    Creates an interface for model fitting of spike trains with parameters draw by
-    gradient-free algorithms (through ask/tell interfaces).
-    Input nad output dimensions don't have to agree. Output has to contain times of spikes.
-    Initiates n_neurons = num input traces * num samples, to which drawn parameters get assigned
-    and  evaluates them in parallel.
+    Creates an interface for model fitting of spike trains with parameters drawn
+    by gradient-free algorithms (through ask/tell interfaces).
+    Input nad output dimensions don't have to agree. Output has to contain times
+    of spikes. Initiates n_neurons = num input traces * num samples, to which
+    drawn parameters get assigned and evaluates them in parallel.
 
     Parameters
     ----------
@@ -363,7 +364,6 @@ def fit_spikes(model=None,
     simulator.initialize(network)
     optimizer.initialize(parameter_names, **params)
 
-
     def calc_errors(metric, simulator, output):
         spikes = get_spikes(simulator.network['monitor'])
         errors = metric.calc(spikes, output, Ntraces)
@@ -380,7 +380,7 @@ def fit_spikes(model=None,
         result_dict = make_dic(parameter_names, res)
         error = min(errors)
 
-        if callback == True:
+        if callback is True:
             print('round {} with error {}'.format(k, error))
             print("parameters:", result_dict)
         elif isinstance(callback, FunctionType):
