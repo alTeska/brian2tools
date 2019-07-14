@@ -110,7 +110,7 @@ def setup_neuron_group(model, n_neurons, method, threshold, reset, refractory,
     return neurons
 
 
-def opt_iter(simulator, optimizer, metric, parameter_names, n_samples, Ntraces,
+def optim_iter(simulator, optimizer, metric, parameter_names, n_samples, Ntraces,
              duration, output, calc_errors, *args):
     """
     Function performs all operations required for one iteration of optimization.
@@ -261,9 +261,9 @@ def fit_traces_standalone(model=None,
 
     # Run Optimization Loop
     for k in range(n_rounds):
-        res, parameters, errors = opt_iter(simulator, optimizer, metric,
-                                           parameter_names, n_samples, Ntraces,
-                                           duration, output, calc_errors, output_var)
+        res, parameters, errors = optim_iter(simulator, optimizer, metric,
+                                             parameter_names, n_samples, Ntraces,
+                                             duration, output, calc_errors, output_var)
 
         # create output variables
         result_dict = make_dic(parameter_names, res)
@@ -372,9 +372,9 @@ def fit_spikes(model=None,
 
     # Run Optimization Loop
     for k in range(n_rounds):
-        res, parameters, errors = opt_iter(simulator, optimizer, metric,
-                                           parameter_names, n_samples, Ntraces,
-                                           duration, output, calc_errors)
+        res, parameters, errors = optim_iter(simulator, optimizer, metric,
+                                             parameter_names, n_samples, Ntraces,
+                                             duration, output, calc_errors)
 
         # create output variables
         result_dict = make_dic(parameter_names, res)
