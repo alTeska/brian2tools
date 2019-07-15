@@ -69,7 +69,7 @@ class Metric(object):
 
     TODO: metric.weights
     """
-    __metaclass__= abc.ABCMeta
+    __metaclass__ = abc.ABCMeta
 
     def __init__(self, **kwds):
         """Initialize the metric."""

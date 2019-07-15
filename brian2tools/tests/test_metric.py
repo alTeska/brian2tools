@@ -5,10 +5,25 @@ import numpy as np
 from numpy.testing.utils import assert_equal, assert_raises, assert_almost_equal
 from brian2 import ms
 from brian2.units.fundamentalunits import DimensionMismatchError
-from brian2tools import Metric, MSEMetric, GammaFactor
+from brian2tools import Metric, MSEMetric, GammaFactor, firing_rate, get_gamma_factor
 
 
 def test_firing_rate():
+    assert_equal(firing_rate([1, 2, 3]), 1)
+    assert_equal(firing_rate([1, 1.2, 1.4, 1.6, 1.8]), 5)
+    assert_almost_equal(firing_rate([1.1, 1.2, 1.3, 1.4, 1.5]), 10)
+
+
+def test_get_gamma_factor():
+    # two same traces
+    # two different traces
+    # src = [7, 9, 11] * ms
+    # src2 = [1, 2, 3] * ms
+    # trg = [0, 2, 4, 6, 8] * ms
+    #
+    # get_gamma_factor(trg, trg, delta=12*ms, dt=0.1*ms)
+    # get_gamma_factor(src2, trg, delta=12*ms, dt=0.1*ms)
+    # get_gamma_factor(src, src2, delta=5*ms, dt=0.1*ms)
     pass
 
 
@@ -18,12 +33,6 @@ def test_init():
     GammaFactor(10*ms, 0.1*ms)
 
     assert_raises(AssertionError, GammaFactor, dt=0.1*ms)
-
-
-def test_get_gamma_factor():
-    # something when it's supposed to be the same
-    # something where it's zero
-    pass
 
 
 def test_calc_mse():
