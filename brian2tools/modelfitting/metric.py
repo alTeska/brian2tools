@@ -1,5 +1,7 @@
 import abc
-from brian2 import Hz
+from brian2 import Hz, second
+from brian2.units.fundamentalunits import check_units
+
 from numpy import (array, sum, square, reshape, abs, amin, digitize,
                    rint, arange, atleast_2d, NaN, float64)
 
@@ -149,7 +151,7 @@ class GammaFactor(Metric):
     simple neuron models',
     Journal of Neuroscience Methods 169, no. 2 (2008): 417-424.
     '''
-
+    @check_units(dt=second, delta=second)
     def __init__(self, dt, delta=None):
         '''Initialize the metric with time windo delta and time step dt'''
         super(Metric, self)
