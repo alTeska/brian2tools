@@ -7,7 +7,7 @@ from brian2.equations.equations import Equations
 from .simulation import RuntimeSimulation, CPPStandaloneSimulation
 from .metric import Metric
 
-__all__ = ['fit_traces_standalone', 'fit_spikes']
+__all__ = ['fit_traces', 'fit_spikes']
 
 
 def make_dic(names, values):
@@ -139,21 +139,21 @@ def optim_iter(simulator, optimizer, metric, parameter_names, n_samples,
     return results, parameters, errors
 
 
-def fit_traces_standalone(model=None,
-                          input_var=None,
-                          input=None,
-                          output_var=None,
-                          output=None,
-                          dt=None,
-                          method=('linear', 'exponential_euler', 'euler'),
-                          optimizer=None,
-                          metric=None,
-                          n_samples=10,
-                          n_rounds=1,
-                          callback=True,
-                          param_init=None,
-                          reset=None, refractory=False, threshold=None,
-                          **params):
+def fit_traces(model=None,
+               input_var=None,
+               input=None,
+               output_var=None,
+               output=None,
+               dt=None,
+               method=('linear', 'exponential_euler', 'euler'),
+               optimizer=None,
+               metric=None,
+               n_samples=10,
+               n_rounds=1,
+               callback=True,
+               param_init=None,
+               reset=None, refractory=False, threshold=None,
+               **params):
     '''
     Creates an interface for model fitting of traces with parameters draw by
     gradient-free algorithms (through ask/tell interfaces).

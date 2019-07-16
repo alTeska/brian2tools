@@ -19,19 +19,19 @@ from brian2.stateupdaters.base import StateUpdateMethod
 from .differential_evolution import differential_evolution
 
 
-__all__=['fit_traces']
+__all__=['fit_traces_de']
 
-def fit_traces(model = None,
-               input_var = None,
-               input = None,
-               output_var = None,
-               output = None,
-               dt = None, tol = 1e-9,
-               maxiter = None,
-               popsize = 15,
-               method = ('linear', 'exponential_euler', 'euler'),
-               t_start = 0*second,
-               **params):
+def fit_traces_de(model = None,
+                  input_var = None,
+                  input = None,
+                  output_var = None,
+                  output = None,
+                  dt = None, tol = 1e-9,
+                  maxiter = None,
+                  popsize = 15,
+                  method = ('linear', 'exponential_euler', 'euler'),
+                  t_start = 0*second,
+                  **params):
     '''
     Fits a model to a set of traces.
     Parameters

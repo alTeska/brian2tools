@@ -46,16 +46,16 @@ eqs_fit = Equations('''
 n_opt = NevergradOptimizer('DE')
 metric = MSEMetric()
 
-res, error = fit_traces_standalone(model=eqs_fit, input_var='I', output_var='v',
-                                   input=inp_trace * amp, output=[out_trace]*mV, dt=dt,
-                                   param_init={'v': -70*mV},
-                                   method='exponential_euler',
-                                   gL=[1*nS, 100*nS],
-                                   EL=[-100*mV, 0*mV],
-                                   VT=[-100*mV, 0*mV],
-                                   n_rounds=3, n_samples=30, optimizer=n_opt,
-                                   metric=metric,
-                                   threshold='v > -50*mV', reset='v = -70*mV')
+res, error = fit_traces(model=eqs_fit, input_var='I', output_var='v',
+                        input=inp_trace * amp, output=[out_trace]*mV, dt=dt,
+                        param_init={'v': -70*mV},
+                        method='exponential_euler',
+                        gL=[1*nS, 100*nS],
+                        EL=[-100*mV, 0*mV],
+                        VT=[-100*mV, 0*mV],
+                        n_rounds=3, n_samples=30, optimizer=n_opt,
+                        metric=metric,
+                        threshold='v > -50*mV', reset='v = -70*mV')
 
 print(res)
 

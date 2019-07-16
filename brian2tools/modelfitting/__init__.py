@@ -9,7 +9,7 @@ from .metric import *
 from .simulation import *
 from .utils import *
 
-__all__ = ['fit_traces', 'fit_traces_standalone', 'fit_spikes',
+__all__ = ['fit_traces_de', 'fit_traces', 'fit_spikes',
            'generate_fits',
            'Optimizer', 'NevergradOptimizer', 'SkoptOptimizer',
            'Simulation', 'RuntimeSimulation', 'CPPStandaloneSimulation',

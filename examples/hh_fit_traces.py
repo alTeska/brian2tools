@@ -68,7 +68,7 @@ gl   : siemens (constant)
 ''',
 Cm = 1*ufarad*cm**-2 * area,El = -65*mV,EK = -90*mV,ENa = 50*mV,VT = -63*mV)
 
-params, fits, error = fit_traces(model = eqs, input_var = 'I', output_var = 'v',\
+params, fits, error = fit_traces_de(model = eqs, input_var = 'I', output_var = 'v',\
         input = inp_trace * nA, output = out_trace*mV, dt = dt,
         gl = [1e-5*siemens*cm**-2 * area, 1e-6*siemens*cm**-2 * area],
         g_na = [1*msiemens*cm**-2 * area, 200*msiemens*cm**-2 * area],

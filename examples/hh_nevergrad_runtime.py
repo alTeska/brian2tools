@@ -105,16 +105,16 @@ metric = None
 
 
 # pass parameters to the NeuronGroup
-res, error = fit_traces_standalone(model=eqs, input_var='I', output_var='v',
-                                   input=inp_trace * amp, output=out_trace*mV, dt=dt,
-                                   n_rounds=1, n_samples=5, optimizer=n_opt, metric=metric,
-                                   param_init={'v': -65*mV},
-                                   method='exponential_euler',
-                                   callback=callback,
-                                   gl=[1e-8*siemens*cm**-2 * area, 1e-3*siemens*cm**-2 * area],
-                                   g_na=[1*msiemens*cm**-2 * area, 2000*msiemens*cm**-2 * area],
-                                   g_kd=[1*msiemens*cm**-2 * area, 1000*msiemens*cm**-2 * area],
-                                   )
+res, error = fit_traces(model=eqs, input_var='I', output_var='v',
+                        input=inp_trace * amp, output=out_trace*mV, dt=dt,
+                        n_rounds=1, n_samples=5, optimizer=n_opt, metric=metric,
+                        param_init={'v': -65*mV},
+                        method='exponential_euler',
+                        callback=callback,
+                        gl=[1e-8*siemens*cm**-2 * area, 1e-3*siemens*cm**-2 * area],
+                        g_na=[1*msiemens*cm**-2 * area, 2000*msiemens*cm**-2 * area],
+                        g_kd=[1*msiemens*cm**-2 * area, 1000*msiemens*cm**-2 * area],
+                        )
 
 # give information to the optimizer
 print('correct:', params_correct, '\n output:', res)

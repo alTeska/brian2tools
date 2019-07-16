@@ -3,11 +3,11 @@ Test the modelfitting module
 '''
 from brian2 import zeros, Equations
 from brian2 import nS, mV, volt, ms
-from brian2tools import fit_traces
+from brian2tools import fit_traces_de
 
 
 def test_import():
-    fit_traces
+    fit_traces_de
 
 def test_fit_traces():
     # Create voltage traces for an activation experiment
@@ -22,10 +22,12 @@ def test_fit_traces():
     g : siemens (constant)
     E : volt (constant)
     ''')
-    params, fits, error = fit_traces(model = model, input_var = 'v', output_var = 'I',\
-        input = input_traces, output = output_traces,
-        dt = 0.1*ms, g = [1*nS, 30*nS], E = [-20*mV,100*mV],
-        tol = 1e-6, popsize=10)
+    params, fits, error = fit_traces_de(model = model, input_var = 'v',
+                                        output_var = 'I', input = input_traces,
+                                        output = output_traces, dt = 0.1*ms,
+                                        g = [1*nS, 30*nS],
+                                        E = [-20*mV,100*mV],
+                                        tol = 1e-6, popsize=10)
 
 if __name__ == '__main__':
     test_import()
