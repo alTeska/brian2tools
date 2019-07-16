@@ -4,9 +4,12 @@ Test the simulation class
 import numpy as np
 from numpy.testing.utils import assert_equal, assert_raises
 from brian2 import (Equations, NeuronGroup, StateMonitor, Network, ms,
-                    defaultclock, device, get_device, start_scope)
+                    defaultclock, device, start_scope)
+from brian2.devices.device import Dummy
 from brian2tools import Simulation, RuntimeSimulation, CPPStandaloneSimulation
-from brian2.devices.device import reset_device
+from brian2tools.modelfitting.simulation import (initialize_neurons,
+                                                 initialize_parameter)
+
 
 model = Equations('''
     I = g*(v-E) : amp
@@ -16,12 +19,15 @@ model = Equations('''
     ''')
 
 dt = 0.1 * ms
+duration = 10 * ms
 defaultclock.dt = dt
 
 neurons = NeuronGroup(1, model, name='neurons')
 monitor = StateMonitor(neurons, 'I', record=True, name='monitor')
 
 net = Network(neurons, monitor)
+empty_net = Network()
+wrong_net = Network(NeuronGroup(1, model, name='neurons2'))
 
 
 def test_init():
@@ -31,35 +37,40 @@ def test_init():
 
 
 def test_initialize_parameter():
-    pass
+    g_init = initialize_parameter(neurons.__getattr__('g'), 100)
+    assert(isinstance(g_init, Dummy))
 
 
 def test_initialize_neurons():
-    pass
-
-
-def test_run_again():
-    pass
-
-
-def test_set_parameter_value():
-    pass
-
-
-def test_set_states():
-    pass
+    params_init = initialize_neurons(['g', 'E'], neurons, {'g': 100, 'E': 10})
+    assert(isinstance(params_init, dict))
+    assert(isinstance(params_init['g'], Dummy))
+    assert(isinstance(params_init['E'], Dummy))
 
 
 def test_initialize_simulation_standalone():
     start_scope()
     sas = CPPStandaloneSimulation()
+    assert_raises(TypeError, sas.initialize)
+    assert_raises(KeyError, sas.initialize, empty_net)
+    assert_raises(Exception, sas.initialize, wrong_net)
+
     sas.initialize(net)
     assert(isinstance(sas.network, Network))
 
 
+def test_initialize_simulation_runtime():
+    start_scope()
+    rts = RuntimeSimulation()
+    assert_raises(TypeError, rts.initialize)
+
+    rts.initialize(net)
+    assert(isinstance(rts.network, Network))
+    assert_raises(KeyError, rts.initialize, empty_net)
+    assert_raises(Exception, rts.initialize, wrong_net)
+
+
 def test_run_simulation_standalone():
-    dev = get_device()
-    reset_device(dev)
     start_scope()
 
     neurons = NeuronGroup(1, model, name='neurons')
@@ -67,7 +78,6 @@ def test_run_simulation_standalone():
     net = Network(neurons, monitor)
 
     device.has_been_run = False
-    duration = 10*ms
     sas = CPPStandaloneSimulation()
     sas.initialize(net)
 
@@ -75,25 +85,19 @@ def test_run_simulation_standalone():
     I = getattr(sas.network['monitor'], 'I')
     assert_equal(np.shape(I), (1, duration/dt))
 
-
-def test_initialize_simulation_runtime():
-    start_scope()
-    rts = RuntimeSimulation()
-    rts.initialize(net)
-    assert(isinstance(rts.network, Network))
+    # check the re-run
+    sas.run(duration, {'g': 100, 'E': 10}, ['g', 'E'])
+    I = getattr(sas.network['monitor'], 'I')
+    assert_equal(np.shape(I), (1, 2 * duration/dt))
 
 
 def test_run_simulation_runtime():
-    dev = get_device()
-    reset_device(dev)
     start_scope()
 
     neurons = NeuronGroup(1, model, name='neurons')
     monitor = StateMonitor(neurons, 'I', record=True, name='monitor')
     net = Network(neurons, monitor)
 
-    device.has_been_run = False
-    duration = 10*ms
     rts = RuntimeSimulation()
     rts.initialize(net)
 

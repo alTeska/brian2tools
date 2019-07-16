@@ -1,11 +1,11 @@
 import os
 import abc
 from numpy import atleast_1d
-from brian2 import device
+from brian2 import device, NeuronGroup
 
 
 def initialize_parameter(variableview, value):
-    """initliazie parameter variable in static file"""
+    """initliazie parameter variable in static file, returns Dummy device"""
     variable = variableview.variable
     array_name = device.get_array_name(variable)
     static_array_name = device.static_array(array_name, value)
@@ -16,7 +16,10 @@ def initialize_parameter(variableview, value):
 
 
 def initialize_neurons(params_names, neurons, params):
-    """initialize each parameter for NeuronGroup"""
+    """
+    initialize each parameter for NeuronGroup returns dictionary of Dummy
+    devices
+    """
     params_init = dict()
 
     for name in params_names:
@@ -26,7 +29,7 @@ def initialize_neurons(params_names, neurons, params):
 
 
 def run_again():
-    """rerun the NeuronGroup on cpp file"""
+    """re-run the NeuronGroup on cpp file"""
     device.run(device.project_dir, with_output=False, run_args=[])
 
 
@@ -38,7 +41,6 @@ def set_parameter_value(identifier, value):
 
 
 def set_states(init_dict, values):
-    # TODO: add a param checker
     """set parameters values in the file for the NeuronGroup"""
     for obj_name, obj_values in values.items():
         set_parameter_value(init_dict[obj_name], obj_values)
@@ -62,7 +64,8 @@ class Simulation(object):
         Parameters
         ----------
         network: Network initialized instance
-            consisting of NeuronGroup and a Monitor
+            consisting of NeuronGroup named 'neurons' and a Monitor named
+            'monitor'
         """
         pass
 
@@ -86,6 +89,9 @@ class Simulation(object):
 class RuntimeSimulation(Simulation):
     """Simulation class created for use with RuntimeDevice"""
     def initialize(self, network):
+        if network['neurons'] is NeuronGroup:
+            raise Exception("Network needs to have a NeuronGroup 'neurons'")
+
         self.network = network
         self.network.store()
 
@@ -98,6 +104,9 @@ class RuntimeSimulation(Simulation):
 class CPPStandaloneSimulation(Simulation):
     """Simulation class created for use with CPPStandaloneDevice"""
     def initialize(self, network):
+        if not network['neurons']:
+            raise Exception("Network needs to have a NeuronGroup 'neurons'")
+
         self.network = network
 
     def run(self, duration, params, params_names):
@@ -106,7 +115,8 @@ class CPPStandaloneSimulation(Simulation):
         code generaion
         """
         if not device.has_been_run:
-            self.params_init = initialize_neurons(params_names, self.network['neurons'],
+            self.params_init = initialize_neurons(params_names,
+                                                  self.network['neurons'],
                                                   params)
             self.network.run(duration)
 

@@ -71,7 +71,7 @@ def setup_fit(model=None, dt=None, param_init=None, input_var=None,
 
     if dt is None:
         raise Exception('dt (sampling frequency of the input) must be set')
-        defaultclock.dt = dt
+    defaultclock.dt = dt
 
     if input_var not in model.identifiers:
         raise Exception("%s is not an identifier in the model" % input_var)
