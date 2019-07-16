@@ -64,7 +64,7 @@ def get_gamma_factor(source, target, delta, dt):
 
 class Metric(object):
     """
-    Metic acstract class to define functions required for a custom metric
+    Metic abstract class to define functions required for a custom metric
     To be used with modelfitting fit_traces.
 
     TODO: metric.weights
@@ -77,14 +77,32 @@ class Metric(object):
 
     @abc.abstractmethod
     def get_features(self, traces, output):
-        """Function calculates features / errors for all of the traces"""
+        """
+        Function calculates features / errors for each of the traces and stores
+        it in an attibute metric.features
+
+
+        Parameters
+        ----------
+        traces: 2D array
+            traces to be evaluated
+        output: array
+            goal traces
+        """
         pass
 
     @abc.abstractmethod
     def get_errors(self, features, n_traces):
         """
         Function weights features/multiple errors into one final error per each
-        set of parameters
+        set of parameters and inputs stored metric.errors.
+
+        Parameters
+        ----------
+        features: 2D array
+            features set for each simulated trace
+        n_traces: int
+            number of input traces
         """
         pass
 
@@ -117,7 +135,8 @@ class Metric(object):
 
 
 class MSEMetric(Metric):
-    """Mean Square Error between goal and calculated output"""
+    __doc__ = "Mean Square Error between goal and calculated output." + \
+              Metric.get_features.__doc__
     def __init__(self):
         super(Metric, self).__init__()
 
@@ -142,7 +161,7 @@ class MSEMetric(Metric):
 
 
 class GammaFactor(Metric):
-    '''
+    __doc__ = '''
     Calculate gamma factors between goal and calculated spike trains, with
     precision delta.
 
@@ -150,10 +169,18 @@ class GammaFactor(Metric):
     R. Jolivet et al., 'A benchmark test for a quantitative assessment of
     simple neuron models',
     Journal of Neuroscience Methods 169, no. 2 (2008): 417-424.
-    '''
+    ''' + Metric.get_features.__doc__
+
     @check_units(dt=second, delta=second)
     def __init__(self, dt, delta=None):
-        '''Initialize the metric with time windo delta and time step dt'''
+        '''
+        Initialize the metric with time window delta and time step dt
+
+        Parameters
+        ----------
+        dt: time step [ms]
+        delta: time window [ms]
+        '''
         super(Metric, self)
         if delta is None:
             raise AssertionError('delta (time window for gamma factor), \
@@ -162,6 +189,7 @@ class GammaFactor(Metric):
         self.dt = dt
 
     def get_features(self, traces, output, n_traces):
+
         gamma_factors = []
         if type(output[0]) == float64:
             output = atleast_2d(output)

@@ -111,8 +111,23 @@ def setup_neuron_group(model, n_neurons, method, threshold, reset, refractory,
     return neurons
 
 
+def calc_errors_spikes(metric, simulator, n_traces, output):
+    """Returns errors after simulation with SpikeMonitor."""
+    spikes = get_spikes(simulator.network['monitor'])
+    errors = metric.calc(spikes, output, n_traces)
+
+    return errors
+
+
+def calc_errors_traces(metric, simulator, n_traces, output, output_var):
+    """Returns errors after simulation with StateMonitor."""
+    traces = getattr(simulator.network['monitor'], output_var)
+    errors = metric.calc(traces, output, n_traces)
+    return errors
+
+
 def optim_iter(simulator, optimizer, metric, parameter_names, n_samples,
-               Ntraces, duration, output, calc_errors, *args):
+               n_traces, duration, output, calc_errors, *args):
     """
     Function performs all operations required for one iteration of optimization.
     Drawing parameters, setting them to simulator and calulating the error.
@@ -128,10 +143,10 @@ def optim_iter(simulator, optimizer, metric, parameter_names, n_samples,
     """
     parameters = optimizer.ask(n_samples=n_samples)
 
-    d_param = get_param_dic(parameters, parameter_names, Ntraces,
+    d_param = get_param_dic(parameters, parameter_names, n_traces,
                             n_samples)
     simulator.run(duration, d_param, parameter_names)
-    errors = calc_errors(metric, simulator, output, *args)
+    errors = calc_errors(metric, simulator, n_traces, output, *args)
 
     optimizer.tell(parameters, errors)
     results = optimizer.recommend()
@@ -230,35 +245,30 @@ def fit_traces(model=None,
                                  output_var=output_traces,
                                  Ntraces=Ntraces)
 
-    # Online metric calc
+    # Pick Metric, prep env for it
     if metric is None:
         t_start = 0*second
         neurons.namespace['t_start'] = t_start
         neurons.run_regularly('total_error +=  (' + output_var + '-output_var\
-                            (t,i % Ntraces))**2 * int(t>=t_start)', when='end')
+        (t,i % Ntraces))**2 * int(t>=t_start)', when='end')
 
-        def calc_online_error():
-            """calculate online error"""
-            err = neurons.total_error/int((duration-t_start)/defaultclock.dt)
-            err = mean(err.reshape((n_samples, Ntraces)), axis=1)
+        def calc_online_error(metric, simulator, output, n_traces, output_var):
+            """Calculates error in online fashion"""
+            err = simulator.network['neurons'].total_error/int((duration-t_start)/defaultclock.dt)
+            err = mean(err.reshape((n_samples, n_traces)), axis=1)
 
             return array(err)
+
+        calc_errors = calc_online_error
+
+    elif isinstance(metric, Metric):
+        calc_errors = calc_errors_traces
 
     # Set up Simulator and Optimizer
     monitor = StateMonitor(neurons, output_var, record=True, name='monitor')
     network = Network(neurons, monitor)
     simulator.initialize(network)
     optimizer.initialize(parameter_names, **params)
-
-    def calc_errors(metric, simulator, output, output_var):
-        """Returns errors after simulation."""
-        if isinstance(metric, Metric):
-            traces = getattr(simulator.network['monitor'], output_var)
-            errors = metric.calc(traces, output, Ntraces)
-        elif metric is None:
-            errors = calc_online_error()
-
-        return errors
 
     # Run Optimization Loop
     for k in range(n_rounds):
@@ -364,17 +374,11 @@ def fit_spikes(model=None,
     simulator.initialize(network)
     optimizer.initialize(parameter_names, **params)
 
-    def calc_errors(metric, simulator, output):
-        spikes = get_spikes(simulator.network['monitor'])
-        errors = metric.calc(spikes, output, Ntraces)
-
-        return errors
-
     # Run Optimization Loop
     for k in range(n_rounds):
         res, parameters, errors = optim_iter(simulator, optimizer, metric,
                                              parameter_names, n_samples, Ntraces,
-                                             duration, output, calc_errors)
+                                             duration, output, calc_errors_spikes)
 
         # create output variables
         result_dict = make_dic(parameter_names, res)
