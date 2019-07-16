@@ -1,8 +1,7 @@
 from brian2 import *
 from brian2tools import *
+prefs.codegen.target = 'cython'  # weave is not multiprocess-safe!
 
-
-# prefs.codegen.target = 'cython'  # weave is not multiprocess-safe!
 
 # Parameters
 area = 20000*umetre**2
@@ -11,7 +10,6 @@ El = -65*mV
 EK = -90*mV
 ENa = 50*mV
 VT = -63*mV
-
 dt = 0.01*ms
 
 # Generate a step-current input and an "experimental" voltage trace
@@ -133,5 +131,4 @@ ax[0].plot(np.arange(len(fits[0]))*dt/ms, fits[0]/mV)
 ax[1].plot(np.arange(len(out_trace[1]))*dt/ms, out_trace[1])
 ax[1].plot(np.arange(len(fits[1]))*dt/ms, fits[1]/mV)
 plt.title('nevergrad optimization')
-# plt.savefig('plots/hh_nevergrad.png')
 plt.show()

@@ -70,21 +70,32 @@ print('results:', result_dict['C']*farad, result_dict['gL']*siemens)
 
 # visualization of the results
 start_scope()
-group2 = NeuronGroup(1, eqs,
-                    threshold='v > -50*mV',
-                    reset='v = -70*mV',
-                    method='exponential_euler')
-group2.v = -70 * mV
-res = {'gL': [result_dict['gL']*siemens], 'C': [result_dict['C']*farad]}
+spikes = generate_fits(model=eqs_fit,
+                       params=result_dict,
+                       input=inp_trace * amp,
+                       input_var='I',
+                       output_var='spikes',
+                       dt=dt,
+                       threshold='v > -50*mV',
+                       reset='v = -70*mV',
+                       method='exponential_euler',
+                       param_init={'v': -70*mV})
 
-group2.set_states(res)
+print('spike times:', spikes)
 
-monitor2 = StateMonitor(group2, 'v', record=True)
-smonitor2  = SpikeMonitor(group2)
+start_scope()
+fits = generate_fits(model=eqs_fit,
+                     params=result_dict,
+                     input=inp_trace * amp,
+                     input_var='I',
+                     output_var='v',
+                     dt=dt,
+                     threshold='v > -50*mV',
+                     reset='v = -70*mV',
+                     method='exponential_euler',
+                     param_init={'v': -70*mV})
 
-run(60*ms)
-voltage2 = monitor2.v[0]/mV
-
+# Vizualize the resutls
 plot(voltage);
-plot(voltage2);
+plot(fits[0]/mV)
 plt.show()

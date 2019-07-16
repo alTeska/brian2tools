@@ -1,17 +1,17 @@
 from brian2 import (NeuronGroup, TimedArray, Equations, get_device, Network,
-                    StateMonitor, device)
-from .simulation import RuntimeSimulation, CPPStandaloneSimulation
+                    StateMonitor, SpikeMonitor, device)
+from .modelfitting_standalone import setup_fit, setup_neuron_group, get_spikes
 
 
 # TODO: get generate fits to work with standalone
-def generate_fits(model,
-                  params,
-                  input,
-                  input_var,
-                  output_var,
-                  dt,
-                  method,
-                  reset=None, refractory=None, threshold=None,
+def generate_fits(model=None,
+                  params=None,
+                  input=None,
+                  input_var=None,
+                  output_var=None,
+                  dt=None,
+                  method=None,
+                  reset=None, refractory=False, threshold=None,
                   param_init=None):
     """
     Generate instance of best fits for predicted parameters and all of the
@@ -27,7 +27,7 @@ def generate_fits(model,
     input_var : string
         Input variable name.
     output_var : string
-        Output variable name.
+        Output variable name or 'spikes' to reproduce spike time.
     dt : time step
     method: string, optional
         Integration method
@@ -37,56 +37,40 @@ def generate_fits(model,
     Returns
     -------
     fits: array
-        Traces for each input current
+        Traces of output varaible or spike times
     """
+    simulator = setup_fit(model, dt, param_init, input_var, None)
 
-    # Check initialization of params
-    if param_init:
-        for param, val in param_init.items():
-            if not (param in model.identifiers or param in model.names):
-                raise Exception("%s is not a model variable or an identifier in\
-                                the model")
-
-    param_names = model.parameter_names
-
-    # set up simulator
-    simulators = {
-        'CPPStandaloneDevice': CPPStandaloneSimulation(),
-        'RuntimeDevice': RuntimeSimulation()
-    }
-    simulator = simulators[get_device().__class__.__name__]
-
+    parameter_names = model.parameter_names
     Ntraces, Nsteps = input.shape
     duration = Nsteps * dt
+    n_neurons = Ntraces
 
     input_traces = TimedArray(input.transpose(), dt=dt)
     input_unit = input.dim
     model = model + Equations(input_var + '= input_var(t, i % Ntraces) :\
                               ' + "% s" % repr(input_unit))
 
-    if refractory:
-        neurons = NeuronGroup(Ntraces, model, method=method,
-                              threshold=threshold, reset=reset,
-                              refractory=refractory, name='neurons')
+    neurons = setup_neuron_group(model, n_neurons, method, threshold, reset,
+                                 refractory, param_init,
+                                 input_var=input_traces,
+                                 output_var=output_var,
+                                 Ntraces=Ntraces)
+
+    if output_var == 'spikes':
+        monitor = SpikeMonitor(neurons, record=True, name='monitor')
     else:
-        neurons = NeuronGroup(Ntraces, model, method=method,
-                              threshold=threshold, reset=reset,
-                              name='neurons')
-    neurons.namespace['input_var'] = input_traces
-    neurons.namespace['Ntraces'] = Ntraces
+        monitor = StateMonitor(neurons, output_var, record=True,
+                               name='monitor')
 
-    # initalize the values
-    if param_init:
-        neurons.set_states(param_init)
-
-    monitor = StateMonitor(neurons, output_var, record=True, name='monitor')
-
-    network = Network()
-    network.add(neurons, monitor)
+    network = Network(neurons, monitor)
     simulator.initialize(network)
 
-    simulator.run(duration, params, param_names)
+    simulator.run(duration, params, parameter_names)
 
-    fits = getattr(monitor, output_var)
+    if output_var == 'spikes':
+        fits = get_spikes(simulator.network['monitor'])
+    else:
+        fits = getattr(simulator.network['monitor'], output_var)
 
     return fits

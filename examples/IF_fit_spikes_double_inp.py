@@ -99,41 +99,38 @@ print('results:', result_dict['C']*farad, result_dict['gL']*siemens)
 res = {'gL': [result_dict['gL']*siemens], 'C': [result_dict['C']*farad]}
 
 # visualization of the results
+
+# visualization of the results
 start_scope()
-group_1 = NeuronGroup(1, eqs,
-                    threshold='v > -50*mV',
-                    reset='v = -70*mV',
-                    method='exponential_euler')
-group_1.v = -70 * mV
+spikes = generate_fits(model=eqs_fit,
+                       params=result_dict,
+                       input=inp_trace * amp,
+                       input_var='I',
+                       output_var='spikes',
+                       dt=dt,
+                       threshold='v > -50*mV',
+                       reset='v = -70*mV',
+                       method='exponential_euler',
+                       param_init={'v': -70*mV})
 
-group_1.set_states(res)
-
-monitor_1 = StateMonitor(group_1, 'v', record=True)
-smonitor_1  = SpikeMonitor(group_1)
-
-run(60*ms)
-voltage_1 = monitor_1.v[0]/mV
+print('spike times:', spikes)
 
 start_scope()
-I = TimedArray(input_current0, dt=dt)
-group_0 = NeuronGroup(1, eqs,
-                    threshold='v > -50*mV',
-                    reset='v = -70*mV',
-                    method='exponential_euler')
-group_0.v = -70 * mV
-
-group_0.set_states(res)
-
-monitor_0 = StateMonitor(group_0, 'v', record=True)
-smonitor_0  = SpikeMonitor(group_0)
-
-run(60*ms)
-voltage_0 = monitor_0.v[0]/mV
+fits = generate_fits(model=eqs_fit,
+                     params=result_dict,
+                     input=inp_trace * amp,
+                     input_var='I',
+                     output_var='v',
+                     dt=dt,
+                     threshold='v > -50*mV',
+                     reset='v = -70*mV',
+                     method='exponential_euler',
+                     param_init={'v': -70*mV})
 
 
 fig, ax = plt.subplots(nrows=2)
 ax[0].plot(voltage0);
-ax[0].plot(voltage_0);
+ax[0].plot(fits[0]/mV);
 ax[1].plot(voltage1);
-ax[1].plot(voltage_1);
+ax[1].plot(fits[1]/mV);
 plt.show()

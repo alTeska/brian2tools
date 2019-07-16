@@ -112,7 +112,10 @@ def setup_neuron_group(model, n_neurons, method, threshold, reset, refractory,
 
 
 def calc_errors_spikes(metric, simulator, n_traces, output):
-    """Returns errors after simulation with SpikeMonitor."""
+    """
+    Returns errors after simulation with SpikeMonitor.
+    To be used inside optim_iter.
+    """
     spikes = get_spikes(simulator.network['monitor'])
     errors = metric.calc(spikes, output, n_traces)
 
@@ -120,7 +123,10 @@ def calc_errors_spikes(metric, simulator, n_traces, output):
 
 
 def calc_errors_traces(metric, simulator, n_traces, output, output_var):
-    """Returns errors after simulation with StateMonitor."""
+    """
+    Returns errors after simulation with StateMonitor.
+    To be used inside optim_iter.
+    """
     traces = getattr(simulator.network['monitor'], output_var)
     errors = metric.calc(traces, output, n_traces)
     return errors
@@ -169,13 +175,13 @@ def fit_traces(model=None,
                param_init=None,
                reset=None, refractory=False, threshold=None,
                **params):
-    '''
+    """
     Creates an interface for model fitting of traces with parameters draw by
     gradient-free algorithms (through ask/tell interfaces).
     Input nad output have to have the same dimensions.
 
-    Initiates n_neurons = num input traces * num samples, to which drawn parameters get assigned
-    and  evaluates them in parallel.
+    Initiates n_neurons = num input traces * num samples, to which drawn
+    parameters get assigned and evaluates them in parallel.
 
     Parameters
     ----------
@@ -212,17 +218,13 @@ def fit_traces(model=None,
         dictionary with best parameter set
     error: float
         error value for best parameter set
-
-    TODO:
-     - feedback/calback (including tolrance)
-
-    '''
+    """
     if output_var not in model.names:
         raise Exception("%s is not a model variable" % output_var)
         if output.shape != input.shape:
             raise Exception("Input and output must have the same size")
 
-    simulator = setup_fit(model,dt, param_init, input_var, metric)
+    simulator = setup_fit(model, dt, param_init, input_var, metric)
 
     parameter_names = model.parameter_names
     Ntraces, Nsteps = input.shape
@@ -250,12 +252,20 @@ def fit_traces(model=None,
         t_start = 0*second
         neurons.namespace['t_start'] = t_start
         neurons.run_regularly('total_error +=  (' + output_var + '-output_var\
-        (t,i % Ntraces))**2 * int(t>=t_start)', when='end')
+                              (t,i % Ntraces))**2 * int(t>=t_start)', when='end')
 
+    # Set up Simulator and Optimizer
+    monitor = StateMonitor(neurons, output_var, record=True, name='monitor')
+    network = Network(neurons, monitor)
+    simulator.initialize(network)
+    optimizer.initialize(parameter_names, **params)
+
+    if metric is None:
         def calc_online_error(metric, simulator, output, n_traces, output_var):
             """Calculates error in online fashion"""
             err = simulator.network['neurons'].total_error/int((duration-t_start)/defaultclock.dt)
-            err = mean(err.reshape((n_samples, n_traces)), axis=1)
+            err = neurons.total_error/int((duration-t_start)/defaultclock.dt)
+            err = mean(err.reshape((n_samples, Ntraces)), axis=1)
 
             return array(err)
 
@@ -264,17 +274,12 @@ def fit_traces(model=None,
     elif isinstance(metric, Metric):
         calc_errors = calc_errors_traces
 
-    # Set up Simulator and Optimizer
-    monitor = StateMonitor(neurons, output_var, record=True, name='monitor')
-    network = Network(neurons, monitor)
-    simulator.initialize(network)
-    optimizer.initialize(parameter_names, **params)
-
     # Run Optimization Loop
     for k in range(n_rounds):
         res, parameters, errors = optim_iter(simulator, optimizer, metric,
-                                             parameter_names, n_samples, Ntraces,
-                                             duration, output, calc_errors, output_var)
+                                             parameter_names, n_samples,
+                                             Ntraces, duration, output,
+                                             calc_errors, output_var)
 
         # create output variables
         result_dict = make_dic(parameter_names, res)
@@ -303,12 +308,12 @@ def fit_spikes(model=None,
                param_init=None,
                reset=None, refractory=False, threshold=None,
                **params):
-    '''
-    Creates an interface for model fitting of spike trains with parameters drawn
-    by gradient-free algorithms (through ask/tell interfaces).
-    Input nad output dimensions don't have to agree. Output has to contain times
-    of spikes. Initiates n_neurons = num input traces * num samples, to which
-    drawn parameters get assigned and evaluates them in parallel.
+    """
+    Creates an interface for model fitting of spike trains with parameters
+    drawn by gradient-free algorithms (through ask/tell interfaces).
+    Input nad output dimensions don't have to agree. Output has to contain
+    times of spikes. Initiates n_neurons = num input traces * num samples, to
+    which drawn parameters get assigned and evaluates them in parallel.
 
     Parameters
     ----------
@@ -343,11 +348,7 @@ def fit_spikes(model=None,
         dictionary with best parameter set
     error: float
         error value for best parameter set
-
-    TODO:
-     - feedback/calback (including tolrance)
-
-    '''
+    """
     simulator = setup_fit(model=model, dt=dt, param_init=param_init,
                           input_var=input_var, metric=metric)
 
@@ -377,8 +378,9 @@ def fit_spikes(model=None,
     # Run Optimization Loop
     for k in range(n_rounds):
         res, parameters, errors = optim_iter(simulator, optimizer, metric,
-                                             parameter_names, n_samples, Ntraces,
-                                             duration, output, calc_errors_spikes)
+                                             parameter_names, n_samples,
+                                             Ntraces, duration, output,
+                                             calc_errors_spikes)
 
         # create output variables
         result_dict = make_dic(parameter_names, res)

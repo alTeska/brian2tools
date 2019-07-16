@@ -7,7 +7,7 @@ from numpy import (array, sum, square, reshape, abs, amin, digitize,
 
 
 def firing_rate(spikes):
-    '''Raturns rate of the spike train'''
+    """Raturns rate of the spike train"""
     if len(spikes) < 2:
         return NaN
     return (len(spikes) - 1) / (spikes[-1] - spikes[0])
@@ -161,7 +161,7 @@ class MSEMetric(Metric):
 
 
 class GammaFactor(Metric):
-    __doc__ = '''
+    __doc__ = """
     Calculate gamma factors between goal and calculated spike trains, with
     precision delta.
 
@@ -169,18 +169,18 @@ class GammaFactor(Metric):
     R. Jolivet et al., 'A benchmark test for a quantitative assessment of
     simple neuron models',
     Journal of Neuroscience Methods 169, no. 2 (2008): 417-424.
-    ''' + Metric.get_features.__doc__
+    """ + Metric.get_features.__doc__
 
     @check_units(dt=second, delta=second)
     def __init__(self, dt, delta=None):
-        '''
+        """
         Initialize the metric with time window delta and time step dt
 
         Parameters
         ----------
         dt: time step [ms]
         delta: time window [ms]
-        '''
+        """
         super(Metric, self)
         if delta is None:
             raise AssertionError('delta (time window for gamma factor), \
