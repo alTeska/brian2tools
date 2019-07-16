@@ -128,6 +128,8 @@ fits = generate_fits(model=eqs_fit,
                      param_init={'v': -70*mV})
 
 
+print('fits', fits)
+
 fig, ax = plt.subplots(nrows=2)
 ax[0].plot(voltage0);
 ax[0].plot(fits[0]/mV);

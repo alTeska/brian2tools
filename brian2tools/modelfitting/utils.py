@@ -4,7 +4,6 @@ from brian2.devices import reinit_devices
 from .modelfitting_standalone import setup_fit, setup_neuron_group, get_spikes
 
 
-# TODO: get generate fits to work with standalone
 def generate_fits(model=None,
                   params=None,
                   input=None,
