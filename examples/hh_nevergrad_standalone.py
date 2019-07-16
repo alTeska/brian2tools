@@ -1,7 +1,6 @@
 from brian2 import *
 from brian2tools import *
 
-
 prefs.codegen.target = 'cython'  # weave is not multiprocess-safe!
 
 # Parameters
@@ -93,20 +92,16 @@ res, error = fit_traces(model=eqs, input_var='I', output_var='v',
 print('correct:', params_correct, '\n output:', res)
 print('error', error)
 
-
 # visualization of the results
-# TODO: get generate fits to work with standalone
-# start_scope()
-# set_device('cpp_standalone', directory='any', clean=False)
-#
-# fits = generate_fits(model=eqs, method='exponential_euler', params=res,
-#                      input=inp_trace * amp, input_var='I', output_var='v',
-#                      dt=dt, param_init={'v': -65*mV})
-#
-#
-# fig, ax = plt.subplots(nrows=1)
-# ax[0].plot(np.arange(len(out_trace[0]))*dt/ms, out_trace[0])
-# ax[0].plot(np.arange(len(fits[0]))*dt/ms, fits[0]/mV)
-# plt.title('nevergrad optimization')
-# # plt.savefig('plots/hh_nevergrad_standalone.png')
-# plt.show()
+start_scope()
+
+fits = generate_fits(model=eqs, method='exponential_euler', params=res,
+                     input=inp_trace * amp, input_var='I', output_var='v',
+                     dt=dt, param_init={'v': -65*mV})
+
+
+fig, ax = plt.subplots(nrows=1)
+ax.plot(out_trace)
+ax.plot(fits[0]/mV)
+plt.title('nevergrad optimization')
+plt.show()

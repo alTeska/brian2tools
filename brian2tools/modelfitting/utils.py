@@ -1,5 +1,6 @@
 from brian2 import (NeuronGroup, TimedArray, Equations, get_device, Network,
                     StateMonitor, SpikeMonitor, device)
+from brian2.devices import reinit_devices
 from .modelfitting_standalone import setup_fit, setup_neuron_group, get_spikes
 
 
@@ -39,6 +40,10 @@ def generate_fits(model=None,
     fits: array
         Traces of output varaible or spike times
     """
+    if get_device().__class__.__name__ == 'CPPStandaloneDevice':
+        device.has_been_run = False
+        reinit_devices()
+
     simulator = setup_fit(model, dt, param_init, input_var, None)
 
     parameter_names = model.parameter_names
