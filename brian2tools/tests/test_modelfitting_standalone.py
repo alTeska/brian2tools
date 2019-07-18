@@ -1,40 +1,83 @@
 '''
 Test the modelfitting module
 '''
-from brian2 import zeros, Equations
+import numpy as np
+from numpy.testing.utils import assert_equal
+
+from brian2 import zeros, Equations, SpikeMonitor
 from brian2 import nS, mV, volt, ms
 from brian2tools import fit_traces, NevergradOptimizer, SkoptOptimizer
+from brian2tools.modelfitting.modelfitting_standalone import (make_dic, get_param_dic,
+                                                              get_spikes, setup_fit,
+                                                              setup_fit, setup_neuron_group,
+                                                              calc_errors_spikes, calc_errors_traces,
+                                                              optim_iter)
 
 
-input_traces = zeros((10, 5))*volt
-for i in range(5):
-    input_traces[5:, i] = i*10*mV
+def test_make_dic():
+    names = ['a', 'b']
+    values = [1, 2]
+    result_dic = make_dic(names, values)
 
-# Create target current traces
-output_traces = 10*nS*input_traces
-model = Equations('''
-    I = g*(v-E) : amp
-    g : siemens (constant)
-    E : volt (constant)
-    ''')
+    assert isinstance(result_dic, dict)
+    assert_equal(result_dic, {'a': 1, 'b': 2})
 
 
-def test_import():
-    fit_traces
+def test_get_param_dic():
+    d = get_param_dic([1, 2], ['a', 'b'], 2, 2)
+    assert isinstance(d, dict)
+    assert_equal(d, {'a': [1, 1, 1, 1], 'b': [2, 2, 2, 2]})
+
+    d = get_param_dic([[1, 3], [2, 4]], ['a', 'b'], 1, 1)
+    assert_equal(d, {'a': [1, 2], 'b': [3, 4]})
+
+    d = get_param_dic([[1, 3], [2, 4]], ['a', 'b'], 1, 2)
+    assert_equal(d, {'a': [1, 2], 'b': [3, 4]})
+
+    d = get_param_dic([[1, 3], [2, 4]], ['a', 'b'], 2, 1)
+    assert_equal(d, {'a': [1, 1, 2, 2], 'b': [3, 3, 4, 4]})
 
 
-def test_fit_traces():
-    n_opt = NevergradOptimizer('DE')
-    s_opt = SkoptOptimizer('gp')
-    res, error = fit_traces(model=model, input_var='v', output_var='I',
-                            input=input_traces, output=output_traces,
-                            dt=0.1*ms, optimizer=n_opt,
-                            g=[1*nS, 30*nS], E=[-20*mV, 100*mV],)
-
-    res, error = fit_traces(model=model, input_var='v', output_var='I',
-                            input=input_traces, output=output_traces,
-                            dt=0.1*ms, optimizer=s_opt,
-                            g=[1*nS, 30*nS], E=[-20*mV, 100*mV],)
+def test_get_spikes():
+    # needs spike monitor to be run
+    pass
 
 
-# TODO: test different methods, test **kwds
+def test_setup_fit():
+    # elicit all the errors
+    # check for None and Metric
+    # check for simulator setups
+    pass
+
+
+def test_setup_neuron_group():
+    # check if Neurons is a neuron group with correct name, method, threshold, refra, rest, states
+    pass
+
+
+def test_calc_errors_spikes():
+    # needs monitor to be run
+
+    pass
+
+
+def test_calc_error_traces():
+    # needs monitor to be run
+
+    pass
+
+
+def test_optim_iter():
+    #  mock everything setup
+    pass
+
+
+def test_fit_traces_errors():
+    # just erorrs
+    # separate files for functional test
+
+    pass
+
+
+def test_fit_spikes_errors():
+    pass
