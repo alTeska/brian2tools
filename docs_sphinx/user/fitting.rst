@@ -1,144 +1,292 @@
-Model fitting
+availableModel fitting
 =============
 
 The `brian2tools` offers model fitting package, that allows for data driven optimization of custom
 models. We offer the users a toolbox, that allows the user to find the best fit of the parameters
 for recorded traces and spike trains.
 
-Model provides two 
+Model provides two functions:
+ - `fit_spikes()`
+ - `fit_traces()`
+
+
+That accept the model, data as an input and returns  best fit of parameters and corresponding error.
+
+
+
 .. contents::
     Overview
     :local:
 
 
-## How it works
+We assume that ``brian2tools`` has been imported like this:
+
+.. code:: python
+
+    from brian2tools import *
+
+
+How it works
+------------
+
 Model fitting requires two components:
  - A **metric**: to compare results and decide which one is the best
  - An **optimization** algorithm: to decide which parameter combinations to try
 
-Each scripts require
-```
-opt = Optimizer()
-metric = Metric()
+Each scripts requires
 
-res, error = fit_traces(metric=metric, optimizer=opt, ...)
-res, error = fit_spikes(metric=metric, optimizer=opt, ...)
-```
+.. code:: python
+
+  opt = Optimizer()
+  metric = Metric()
+
+  params, error = fit_traces(metric=metric, optimizer=opt, ...)
+  params, error = fit_spikes(metric=metric, optimizer=opt, ...)
+
 
 The proposed solution is developed using a modular approach, where both the optimization method and
-metric to be optimized can be easily swapped out.
+metric to be optimized can be easily swapped out by the users custom implementation.
+
+Both fitting functions require model defined as ``Equation`` object, that has parameters that will be
+optimized specified as constants in a following way:
+
+.. code:: python
 
 
-### Optimizer
 
-- gradient free methods - global methods
-    * evolutionary algorithms
-    * genetic algorithms
-    * bayesian optimization
-    * ...
+Example of `fit_traces()` with all of the necessary arguments:
 
-By default, we support a range of global *derivative-free optimization* methods (provided by the library **Nevergrad**)
-as well as *Bayesian Optimization* for black box functions (provided by **Scikit-Optimize**).
 
-#### Follows `ask()/tell()` interface
+.. code:: python
 
-Abstract `class Optimizer` prepared for different back-end libraries!
+  params, error = fit_traces(model=model,
+                             input_var='I',
+                             output_var='v',
+                             input=inp_trace * amp,
+                             output=out_trace * mV,
+                             dt=dt,
+                             optimizer=n_opt,
+                             metric=metric,
+                             n_rounds=1, n_samples=5,
+                             gl=[1e-8*siemens*cm**-2 * area, 1e-3*siemens*cm**-2 * area],)
 
-User can plug in different optimization tool, as long as it follows``` ask() / tell``` interface:
 
-```
-parameters = optimizer.ask()
 
-errors = simulator.run(parameters)
+Optimizer
+---------
 
-optimizer.tell(parameters, errors)
-results = optimizer.recommend()
-```
+Optimizer classes uses gradient free global optimization methods
+(evolutionary algorithms, genetic algorithms, Bayesian optimization)
 
-### Provided libraries and methods:
-#### Nevergrad
-offers an extensive collection of algorithms that do not require gradient computation
 
-<img src='./images/animation_gray_border.gif'  width="900" height="900" align="right"/>
+Follows `ask()/tell()` interface
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-**Method examples:**
-- Differential evolution.
-- Sequential quadratic programming.
-- FastGA.
-- Covariance matrix adaptation.
-- Particle swarm optimization.
-- ...
+User can plug in different optimization tool, as long as it follows ```ask() / tell``` interface.
+Abstract `class Optimizer` prepared for different back-end libraries. All of the optimizer specific
+arguments have to be provided upon optimizers initialization.
 
-#### Scikit-Optimize (skopt)
-<img src='./images/skopt_example_1to3.png'  width="450" height="450" align="right"/>
 
-- bayesian-optimization
-- library to minimize (very) expensive and noisy black-box functions
-- implements several methods for sequential model-based
-  optimization
-- based no scikit-learn minimize function
+```ask() / tell``` interface:
 
+.. code:: python
+
+  parameters = optimizer.ask()
+
+  errors = simulator.run(parameters)
+
+  optimizer.tell(parameters, errors)
+  results = optimizer.recommend()
+
+
+Provided libraries and methods:
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+**1. Nevergrad**
+Offers an extensive collection of algorithms that do not require gradient computation.
+Nevergrad optimizer can be specified in the following way:
+
+.. code:: python
+
+  opt = NevergradOptimizer(method='PSO')
+
+where method input is a string with specific optimization algorithm.
+
+**Available methods include:**
+ - Differential evolution. ['DE']
+ - Covariance matrix adaptation.['CMA']
+ - Particle swarm optimization.['PSO']
+ - Sequential quadratic programming.['SQP']
+
+
+Nevergrad is not yet documented, to check availible methods use following code:
+
+.. code:: python
+
+  from nevergrad.optimization import registry
+  print(sorted(registry.keys()))
+
+Source code:
+
+https://github.com/facebookresearch/nevergrad
+
+Important notes:
+ - TODO: number of samples per round in Nevergrad optimization methods is limited to 30,
+   to increase it has to be manually changed
+
+
+**2. Scikit-Optimize (skopt)**
+Skopt implements several methods for sequential model-based ("blackbox") optimization
+and focuses on bayesian methods. Algorithms are based on scikit-learn minimize function.
+
+**Available Methods:**
+ - Gaussian process-based minimization algorithms ['GP']
+ - Sequential optimization using gradient boosted trees ['GBRT']
+ - Sequential optimisation using decision trees ['ET']
+ - Random forest regressor ['RF']
+
+User can also provide a custom made sklearn regressor!
+
+.. code:: python
+
+  opt = SkoptOptimizer(method='GP')
+
+Documentation:
 https://github.com/scikit-optimize
 
 PyData talk:
 https://www.youtube.com/watch?v=DGJTEBt0d-s
 
-#### https://github.com/facebookresearch/nevergrad
-### Metric
 
-- Mean Square Error
+
+Metric
+------
 For metrics, user can select one of the available metrics, eg.: GammaFactor, or easily plug in a code
 extension with a custom metric.
 
-- additionally an offline MSE can be calculated
 
-### Standalone mode
+
+**1. Mean Square Error**
+
+.. math:: MSE ={\frac {1}{n}}\sum _{i=1}^{n}(Y_{i}-{\hat {Y_{i}}})^{2} $$
+
+.. code:: python
+
+  metric = MSEMetric()
+
+also calculated offline with ``metric=None`` as input
+
+
+**2. GammaFactor - for fit_spikes.**
+
+.. math:: \Gamma = \left (\frac{2}{1-2\delta r_{exp}}\right) \left(\frac{N_{coinc} - 2\delta N_{exp}r_{exp}}{N_{exp} + N_{model}}\right)$$
+
+:math:`N_{coinc}$` - number of coincidences
+
+:math:`N_{exp}` and :math:`N_{model}`- number of spikes in experimental and model spike trains
+
+:math:`r_{exp}` - average firting rate in experimental train
+
+:math:`2 \delta N_{exp}r_{exp}` - expected number of coincidences with a poission process
+
+.. code:: python
+
+  metric = GammaFactor(delta=10*ms, dt=0.1*ms)
+
+
+Features
+--------
+Standalone mode
+~~~~~~~~~~~~~~~
 
 Both Brian and the Model Fitting Toolbox are designed to be easily used and save time through automatic
 parallelization of the simulations using code generation.
 
 
-### Callback function
+Callback function
+~~~~~~~~~~~~~~~~~
 
 The feedback provided by the fitting function is designed with the same principle in mind and can also
 be easily extended to fulfil the individual requirements.
 
-## Local Gradient Optimization
-gradient based methods - local application
+boolean or function
 
+``callback = True`` - returns default print out
+
+.. code:: python
+
+  def callback(res, errors, parameters, index):
+      print('index {} errors minimum: {}'.format(index, min(errors)) )
+
+Additional inputs
+~~~~~~~~~~~~~~~~~
+
+
+Local Gradient Optimization
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Additional local optimization with use of gradient methods can be applied.
 Coming soon...
 
 
-### Utils: generate fits
-```
-fits = generate_fits(model=model, params=res, input=input_current * amp,
-                     input_var='I', output_var='v', param_init={'v': -30*mV},
-                     dt=dt)
-```
+Utils: generate fits
+--------------------
 
-## Examples
+In toolboxes utils we provided a helper function that will generate required traces
+based on same model and input. To be used after fitting.
 
+.. code:: python
 
-
-
-
-
-## API
+  fits = generate_fits(model=model, params=res, input=input_current * amp,
+                       input_var='I', output_var='v', param_init={'v': -30*mV},
+                       dt=dt)
 
 
+Simple Examples
+---------------
 
 
-Create a Brian Model Fitting toolbox that works with traces and spike trains
-- vectorization and model flexibility from brian
-- modularity:
-    * multiple optimization methods (libraries)
-    * multiple metrics
-    * custom callback function available
-- find a good balance between flexible system (user can define whatever they want) and convenience (provide a few standard metrics)
+fit_spikes
+~~~~~~~~~~
 
-## Requires:
-- an **optimization algorithm**
+.. code:: python
 
-- a **metric**
+  n_opt = NevergradOptimizer('DE')
+  metric = GammaFactor(dt, 60*ms)
 
-### makes use of Brian parallelisation and flexibility
+
+  params, error = fit_spikes(model=eqs, input_var='I', dt=dt,
+                             input=inp_traces * amp, output=out_spikes,
+                             n_rounds=2, n_samples=30, optimizer=n_opt,
+                             metric=metric,
+                             threshold='v > -50*mV',
+                             reset='v = -70*mV',
+                             method='exponential_euler',
+                             param_init={'v': -70*mV},
+                             gL=[20*nS, 40*nS],
+                             C = [0.5*nF, 1.5*nF])
+
+
+
+fit_traces
+~~~~~~~~~~
+
+.. code:: python
+
+  n_opt = NevergradOptimizer(method='PSO')
+  metric = MSEMetric()
+
+  params, error = fit_traces(model=model,
+                             input_var='I',
+                             output_var='v',
+                             input=inp_trace * amp,
+                             output=out_trace * mV,
+                             param_init={'v': -65*mV},
+                             method='exponential_euler',
+                             dt=dt,
+                             optimizer=n_opt,
+                             metric=metric,
+                             callback=True,
+                             n_rounds=1, n_samples=5,
+                             gl=[1e-8*siemens*cm**-2 * area, 1e-3*siemens*cm**-2 * area],
+                             g_na=[1*msiemens*cm**-2 * area, 2000*msiemens*cm**-2 * area],
+                             g_kd=[1*msiemens*cm**-2 * area, 1000*msiemens*cm**-2 * area],)
