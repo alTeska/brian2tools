@@ -1,9 +1,10 @@
-availableModel fitting
+Model fitting
 =============
 
 The `brian2tools` offers model fitting package, that allows for data driven optimization of custom
 models. We offer the users a toolbox, that allows the user to find the best fit of the parameters
-for recorded traces and spike trains.
+for recorded traces and spike trains. Just like Brian he Model Fitting Toolbox is designed to be
+easily used and save time through automatic parallelization of the simulations using code generation.
 
 Model provides two functions:
  - `fit_spikes()`
@@ -13,13 +14,12 @@ Model provides two functions:
 That accept the model, data as an input and returns  best fit of parameters and corresponding error.
 
 
-
 .. contents::
     Overview
     :local:
 
 
-We assume that ``brian2tools`` has been imported like this:
+In following documentation we assume that ``brian2tools`` has been imported like this:
 
 .. code:: python
 
@@ -33,7 +33,7 @@ Model fitting requires two components:
  - A **metric**: to compare results and decide which one is the best
  - An **optimization** algorithm: to decide which parameter combinations to try
 
-Each scripts requires
+Each scripts requires following initialization:
 
 .. code:: python
 
@@ -52,19 +52,25 @@ optimized specified as constants in a following way:
 
 .. code:: python
 
+  '''
+  ...
+  g_na : siemens (constant)
+  g_kd : siemens (constant)
+  gl   : siemens (constant)
+  '''
 
+In case of spiking neurons,
 
 Example of `fit_traces()` with all of the necessary arguments:
-
 
 .. code:: python
 
   params, error = fit_traces(model=model,
                              input_var='I',
                              output_var='v',
-                             input=inp_trace * amp,
-                             output=out_trace * mV,
-                             dt=dt,
+                             input=inp_trace,
+                             output=out_trace,
+                             dt=0.1*ms,
                              optimizer=n_opt,
                              metric=metric,
                              n_rounds=1, n_samples=5,
@@ -199,8 +205,12 @@ Features
 Standalone mode
 ~~~~~~~~~~~~~~~
 
-Both Brian and the Model Fitting Toolbox are designed to be easily used and save time through automatic
-parallelization of the simulations using code generation.
+ To run the
+
+.. code:: python
+
+  set_device('cpp_standalone', directory='parallel', clean=False)
+
 
 
 Callback function
@@ -236,9 +246,9 @@ based on same model and input. To be used after fitting.
 
 .. code:: python
 
-  fits = generate_fits(model=model, params=res, input=input_current * amp,
+  fits = generate_fits(model=model, params=res, input=input_current,
                        input_var='I', output_var='v', param_init={'v': -30*mV},
-                       dt=dt)
+                       dt=0.1*ms)
 
 
 Simple Examples
@@ -254,8 +264,8 @@ fit_spikes
   metric = GammaFactor(dt, 60*ms)
 
 
-  params, error = fit_spikes(model=eqs, input_var='I', dt=dt,
-                             input=inp_traces * amp, output=out_spikes,
+  params, error = fit_spikes(model=eqs, input_var='I', dt=0.1*ms,
+                             input=inp_traces, output=out_spikes,
                              n_rounds=2, n_samples=30, optimizer=n_opt,
                              metric=metric,
                              threshold='v > -50*mV',
@@ -278,11 +288,11 @@ fit_traces
   params, error = fit_traces(model=model,
                              input_var='I',
                              output_var='v',
-                             input=inp_trace * amp,
-                             output=out_trace * mV,
+                             input=inp_trace,
+                             output=out_trace,
                              param_init={'v': -65*mV},
                              method='exponential_euler',
-                             dt=dt,
+                             dt=0.1*ms,
                              optimizer=n_opt,
                              metric=metric,
                              callback=True,
