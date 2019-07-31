@@ -92,7 +92,9 @@ res, error = fit_traces(model=eqs, input_var='I', output_var='v',
 print('correct:', params_correct, '\n output:', res)
 print('error', error)
 
+
 # visualization of the results
+# TODO: get generate fits to work with standalone
 start_scope()
 
 fits = generate_fits(model=eqs, method='exponential_euler', params=res,

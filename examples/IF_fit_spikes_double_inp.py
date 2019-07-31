@@ -98,7 +98,6 @@ print('results:', result_dict['C']*farad, result_dict['gL']*siemens)
 
 res = {'gL': [result_dict['gL']*siemens], 'C': [result_dict['C']*farad]}
 
-# visualization of the results
 
 # visualization of the results
 start_scope()

@@ -2,17 +2,20 @@ Model fitting
 =============
 
 The `brian2tools` offers model fitting package, that allows for data driven optimization of custom
-models. We offer the users a toolbox, that allows the user to find the best fit of the parameters
-for recorded traces and spike trains. Just like Brian he Model Fitting Toolbox is designed to be
-easily used and save time through automatic parallelization of the simulations using code generation.
+models.
+
+The toolbox allows the user to find the best fit of the parameters for recorded traces and
+spike trains. Just like Brian the Model Fitting Toolbox is designed to be easily used and
+save time through automatic parallelization of the simulations using code generation.
 
 Model provides two functions:
  - `fit_spikes()`
  - `fit_traces()`
 
 
-That accept the model, data as an input and returns  best fit of parameters and corresponding error.
-
+The functions accept the a model and data as an input and returns best fit of parameters
+and corresponding error. Proposed solution can accept multiple traces to optimize over
+at the same time.
 
 .. contents::
     Overview
@@ -33,7 +36,9 @@ Model fitting requires two components:
  - A **metric**: to compare results and decide which one is the best
  - An **optimization** algorithm: to decide which parameter combinations to try
 
-Each scripts requires following initialization:
+That need to be specified before initialization of the fitting function.
+
+Each optimization works with a following scheme:
 
 .. code:: python
 
@@ -44,34 +49,50 @@ Each scripts requires following initialization:
   params, error = fit_spikes(metric=metric, optimizer=opt, ...)
 
 
-The proposed solution is developed using a modular approach, where both the optimization method and
-metric to be optimized can be easily swapped out by the users custom implementation.
+The proposed solution is developed using a modular approach, where both the optimization
+method and metric to be optimized can be easily swapped out by a custom implementation.
 
-Both fitting functions require model defined as ``Equation`` object, that has parameters that will be
+Both fitting functions require 'model' defined as ``Equation`` object, that has parameters that will be
 optimized specified as constants in a following way:
 
 .. code:: python
 
-  '''
+  model = '''
   ...
   g_na : siemens (constant)
   g_kd : siemens (constant)
   gl   : siemens (constant)
   '''
 
-In case of spiking neurons,
+
+Additionally, fitting function requires:
+ - `reset`, and `threshold` in case of spiking neurons (can take refractory as well)
+ - `dt` - time step
+ - `input` - set of input traces (list or array)
+ - `output` - set of goal output (traces/spike trains) (list or array)
+ - `input_var` - name of the input trace variable (string)
+ - `output_var` - name of the output trace variable (string)
+ - `n_rounds` - number of rounds to optimize over
+ - `n_samples` - number of samples to draw in each round (limited by method)
+
+Each free parameter of the model that shall be fitted is defined by two values:
+
+.. code:: python
+
+  param_name = [min, max]
+
 
 Example of `fit_traces()` with all of the necessary arguments:
 
 .. code:: python
 
   params, error = fit_traces(model=model,
+                             input=inp_traces,
+                             output=out_traces,
                              input_var='I',
                              output_var='v',
-                             input=inp_trace,
-                             output=out_trace,
                              dt=0.1*ms,
-                             optimizer=n_opt,
+                             optimizer=opt,
                              metric=metric,
                              n_rounds=1, n_samples=5,
                              gl=[1e-8*siemens*cm**-2 * area, 1e-3*siemens*cm**-2 * area],)
@@ -80,20 +101,20 @@ Example of `fit_traces()` with all of the necessary arguments:
 
 Optimizer
 ---------
-
-Optimizer classes uses gradient free global optimization methods
-(evolutionary algorithms, genetic algorithms, Bayesian optimization)
+Optimizer class is responsible for maximizing a fitness function. Our approach
+uses gradient free global optimization methods (evolutionary algorithms, genetic algorithms,
+ Bayesian optimization). We provided access to two libraries.
 
 
 Follows `ask()/tell()` interface
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+User can plug in different optimization tool, as long as it follows ```ask() / tell```
+interface. Abstract `class Optimizer` prepared for different back-end libraries.
+All of the optimizer specific arguments have to be provided upon
+optimizers initialization.
 
-User can plug in different optimization tool, as long as it follows ```ask() / tell``` interface.
-Abstract `class Optimizer` prepared for different back-end libraries. All of the optimizer specific
-arguments have to be provided upon optimizers initialization.
 
-
-```ask() / tell``` interface:
+```ask() / tell``` interface in optimizer class:
 
 .. code:: python
 
@@ -109,6 +130,9 @@ Provided libraries and methods:
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 **1. Nevergrad**
+
+.. _Nevergrad: https://github.com/facebookresearch/nevergrad
+
 Offers an extensive collection of algorithms that do not require gradient computation.
 Nevergrad optimizer can be specified in the following way:
 
@@ -125,23 +149,23 @@ where method input is a string with specific optimization algorithm.
  - Sequential quadratic programming.['SQP']
 
 
-Nevergrad is not yet documented, to check availible methods use following code:
+Nevergrad is not yet documented, to check all available methods use following code:
 
 .. code:: python
 
   from nevergrad.optimization import registry
   print(sorted(registry.keys()))
 
-Source code:
-
-https://github.com/facebookresearch/nevergrad
 
 Important notes:
  - TODO: number of samples per round in Nevergrad optimization methods is limited to 30,
    to increase it has to be manually changed
 
 
-**2. Scikit-Optimize (skopt)**
+**2. Scikit-Optimize_ (skopt)**
+
+.. _Scikit-Optimize: https://scikit-optimize.github.io/
+
 Skopt implements several methods for sequential model-based ("blackbox") optimization
 and focuses on bayesian methods. Algorithms are based on scikit-learn minimize function.
 
@@ -151,27 +175,23 @@ and focuses on bayesian methods. Algorithms are based on scikit-learn minimize f
  - Sequential optimisation using decision trees ['ET']
  - Random forest regressor ['RF']
 
-User can also provide a custom made sklearn regressor!
+User can also provide a custom made sklearn regressor. Skopt optimizer can be specified in the following way:
 
 .. code:: python
 
   opt = SkoptOptimizer(method='GP')
 
-Documentation:
-https://github.com/scikit-optimize
-
-PyData talk:
-https://www.youtube.com/watch?v=DGJTEBt0d-s
-
 
 
 Metric
 ------
-For metrics, user can select one of the available metrics, eg.: GammaFactor, or easily plug in a code
-extension with a custom metric.
 
+Metric input to specifies the fitness function measuring the performance of the simulation.
+This function gets applied on each simulated trace. We have implemented few metrics within
+modelfitting. Modularity applies here as well, with provided abstract `class Metric`
+prepared for different custom made metrics.
 
-
+Provided metrics:
 **1. Mean Square Error**
 
 .. math:: MSE ={\frac {1}{n}}\sum _{i=1}^{n}(Y_{i}-{\hat {Y_{i}}})^{2} $$
@@ -183,7 +203,7 @@ extension with a custom metric.
 also calculated offline with ``metric=None`` as input
 
 
-**2. GammaFactor - for fit_spikes.**
+**2. GammaFactor - for `fit_spikes()`.**
 
 .. math:: \Gamma = \left (\frac{2}{1-2\delta r_{exp}}\right) \left(\frac{N_{coinc} - 2\delta N_{exp}r_{exp}}{N_{exp} + N_{model}}\right)$$
 
@@ -191,9 +211,12 @@ also calculated offline with ``metric=None`` as input
 
 :math:`N_{exp}` and :math:`N_{model}`- number of spikes in experimental and model spike trains
 
-:math:`r_{exp}` - average firting rate in experimental train
+:math:`r_{exp}` - average firing rate in experimental train
 
-:math:`2 \delta N_{exp}r_{exp}` - expected number of coincidences with a poission process
+:math:`2 \delta N_{exp}r_{exp}` - expected number of coincidences with a Poission process
+
+For more details on the gamma factor, see `Jolivet et al. 2008, “A benchmark test for a quantitative assessment of simple neuron models”, J. Neurosci. Methods. <https://www.ncbi.nlm.nih.gov/pubmed/18160135>`
+
 
 .. code:: python
 
@@ -205,32 +228,55 @@ Features
 Standalone mode
 ~~~~~~~~~~~~~~~
 
- To run the
+Just like with regular Brian script, modelfitting computations can be performed in
+``Runtime`` mode (default) or ``Standalone`` mode.
+<https://brian2.readthedocs.io/en/stable/user/computation.html>
+
+To enable this mode, add the following line after your Brian import, but before your simulation code:
 
 .. code:: python
 
-  set_device('cpp_standalone', directory='parallel', clean=False)
+  set_device('cpp_standalone')
 
 
 
 Callback function
 ~~~~~~~~~~~~~~~~~
 
-The feedback provided by the fitting function is designed with the same principle in mind and can also
-be easily extended to fulfil the individual requirements.
+The feedback from
+The feedback provided by the fitting function can also be extended to
+fulfil the individual requirements. Callback input has been provided in both
+fitting functions. In takes boolean or function as input.
 
-boolean or function
+ ``callback = True`` - returns default print out (default)
 
-``callback = True`` - returns default print out
+ ``callback = False`` - non-verbose
+
+In case of function as an input, user gets 4 inputs to the custom function:
+
+``results, errors, parameters, index``
 
 .. code:: python
 
-  def callback(res, errors, parameters, index):
+  def callback(results, errors, parameters, index):
       print('index {} errors minimum: {}'.format(index, min(errors)) )
+
+that then has to be provided
 
 Additional inputs
 ~~~~~~~~~~~~~~~~~
+User can specify the initial values of evaluated differential equations. The fitting
+functions accept additional dictionary input to address that.
 
+.. code:: python
+
+  param_init = {'v': -30*mV}
+
+Integration method can be manually chosen:
+
+.. code:: python
+
+  method='exponential_euler',
 
 Local Gradient Optimization
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -246,14 +292,13 @@ based on same model and input. To be used after fitting.
 
 .. code:: python
 
-  fits = generate_fits(model=model, params=res, input=input_current,
-                       input_var='I', output_var='v', param_init={'v': -30*mV},
-                       dt=0.1*ms)
+  fits = generate_fits(model=model, params=results, input=input_current,
+                       input_var='I', output_var='v', dt=0.1*ms)
+
 
 
 Simple Examples
 ---------------
-
 
 fit_spikes
 ~~~~~~~~~~
