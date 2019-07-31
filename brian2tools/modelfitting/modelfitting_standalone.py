@@ -171,7 +171,7 @@ def fit_traces(model=None,
                metric=None,
                n_samples=10,
                n_rounds=1,
-               callback=True,
+               callback=None,
                param_init=None,
                reset=None, refractory=False, threshold=None,
                **params):
@@ -204,9 +204,9 @@ def fit_traces(model=None,
         Number of parameter samples to be optimized over.
     n_rounds: int
         Number of rounds to optimize over. (feedback provided over each round)
-    callback: function or bool
-        Provide custom feedback function func(res, errors, parameters, index)
-        if True returns default feedback
+    callback: callable
+        Provide custom feedback function func(results, errors, parameters, index)
+        If callback returns True the fitting execution is interrupted.
     param_init: dict
         Dictionary of variables to be initialized with respective value
     **params:
@@ -285,11 +285,9 @@ def fit_traces(model=None,
         result_dict = make_dic(parameter_names, res)
         error = min(errors)
 
-        if callback is True:
-            print('round {} with error {}'.format(k, error))
-            print("parameters:", result_dict)
-        elif isinstance(callback, FunctionType):
-            callback(res, errors, res, k)
+        if callback is not None:
+            if callback(res, errors, parameters, k) == True:
+                break
 
     return result_dict, error
 
@@ -304,7 +302,7 @@ def fit_spikes(model=None,
                metric=None,
                n_rounds=1,
                n_samples=10,
-               callback=True,
+               callback=None,
                param_init=None,
                reset=None, refractory=False, threshold=None,
                **params):
@@ -334,9 +332,9 @@ def fit_spikes(model=None,
         Number of parameter samples to be optimized over.
     n_rounds: int
         Number of rounds to optimize over. (feedback provided over each round)
-    callback: function or bool
-        Provide custom feedback function func(res, errors, parameters, index)
-        if True returns default feedback
+    callback: callable
+        Provide custom feedback function func(results, errors, parameters, index)
+        If callback returns True the fitting execution is interrupted.
     param_init: dict
         Dictionary of variables to be initialized with respective value
     **params:
@@ -386,10 +384,8 @@ def fit_spikes(model=None,
         result_dict = make_dic(parameter_names, res)
         error = min(errors)
 
-        if callback is True:
-            print('round {} with error {}'.format(k, error))
-            print("parameters:", result_dict)
-        elif isinstance(callback, FunctionType):
-            callback(res, errors, parameters, k)
+        if callback is not None:
+            if callback(res, errors, parameters, k) == True:
+                break
 
     return result_dict, error

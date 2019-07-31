@@ -243,25 +243,21 @@ To enable this mode, add the following line after your Brian import, but before 
 Callback function
 ~~~~~~~~~~~~~~~~~
 
-The feedback from
-The feedback provided by the fitting function can also be extended to
-fulfil the individual requirements. Callback input has been provided in both
-fitting functions. In takes boolean or function as input.
-
- ``callback = True`` - returns default print out (default)
-
- ``callback = False`` - non-verbose
-
-In case of function as an input, user gets 4 inputs to the custom function:
+The 'callback' input provides custom feedback function option. User can provide
+a callable (function), that will provide an output or printout. If callback returns
+`True` the fitting execution is interrupted.
+ User gets four arguments to customize over:
 
 ``results, errors, parameters, index``
+
+An example function:
 
 .. code:: python
 
   def callback(results, errors, parameters, index):
       print('index {} errors minimum: {}'.format(index, min(errors)) )
 
-that then has to be provided
+
 
 Additional inputs
 ~~~~~~~~~~~~~~~~~
