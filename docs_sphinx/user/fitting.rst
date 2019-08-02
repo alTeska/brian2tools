@@ -158,8 +158,13 @@ Nevergrad is not yet documented, to check all available methods use following co
 
 
 Important notes:
- - TODO: number of samples per round in Nevergrad optimization methods is limited to 30,
-   to increase it has to be manually changed
+ - number of samples per round in Nevergrad optimization methods is limited to 30,
+   to increase it user has to specify a popsize upon initialization of NevergradOptimizer
+
+.. code:: python
+
+     opt = NevergradOptimizer(method='DE', popsize=60)
+
 
 
 **2. Scikit-Optimize_ (skopt)**
@@ -177,9 +182,20 @@ and focuses on bayesian methods. Algorithms are based on scikit-learn minimize f
 
 User can also provide a custom made sklearn regressor. Skopt optimizer can be specified in the following way:
 
+
+Parameters:
+
+ - method = ["GP", "RF", "ET", "GBRT" or sklearn regressor, default="GP"]
+ - n_initial_points [int, default=10]
+ - acq_func
+ - acq_optimizer
+ - random_state
+
+For more detail check Optimizer documentation. https://scikit-optimize.github.io/#skopt.Optimizer
+
 .. code:: python
 
-  opt = SkoptOptimizer(method='GP')
+   opt = SkoptOptimizer(method='GP', acq_func='LCB')
 
 
 

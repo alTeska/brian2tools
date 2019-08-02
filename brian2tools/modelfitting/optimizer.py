@@ -161,7 +161,7 @@ class NevergradOptimizer(Optimizer):
         self.optim = optimizerlib.registry[self.method](instrumentation=instrum,
                                                         **self.kwds)
 
-        self.optim._llambda = self.popsize  # TODO: more elegant way
+        self.optim._llambda = self.popsize  # TODO: more elegant way once possible
 
     def ask(self, n_samples):
         self.candidates, parameters = [], []
