@@ -98,8 +98,8 @@ def callback(res, errors, parameters, index):
     print('index {} errors minimum: {}'.format(index, min(errors)) )
 
 n_opt = NevergradOptimizer()
-# metric = MSEMetric()
-metric = None
+metric = MSEMetric()
+# metric = None
 
 
 # pass parameters to the NeuronGroup

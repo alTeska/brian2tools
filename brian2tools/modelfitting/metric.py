@@ -137,6 +137,7 @@ class Metric(object):
 class MSEMetric(Metric):
     __doc__ = "Mean Square Error between goal and calculated output." + \
               Metric.get_features.__doc__
+
     def __init__(self):
         super(Metric, self).__init__()
 
@@ -175,7 +176,7 @@ class GammaFactor(Metric):
     def __init__(self, dt, delta=None):
         """
         Initialize the metric with time window delta and time step dt
-
+output
         Parameters
         ----------
         dt: time step [ms]
@@ -189,7 +190,6 @@ class GammaFactor(Metric):
         self.dt = dt
 
     def get_features(self, traces, output, n_traces):
-
         gamma_factors = []
         if type(output[0]) == float64:
             output = atleast_2d(output)

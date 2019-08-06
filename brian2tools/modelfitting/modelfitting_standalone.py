@@ -286,7 +286,7 @@ def fit_traces(model=None,
         error = min(errors)
 
         if callback is not None:
-            if callback(res, errors, parameters, k) == True:
+            if callback(res, errors, parameters, k) is True:
                 break
 
     return result_dict, error
@@ -345,7 +345,7 @@ def fit_spikes(model=None,
     result_dict : dict
         dictionary with best parameter set
     error: float
-        error value for best parameter set
+        error value for best parameter set==
     """
     simulator = setup_fit(model=model, dt=dt, param_init=param_init,
                           input_var=input_var, metric=metric)
@@ -385,7 +385,7 @@ def fit_spikes(model=None,
         error = min(errors)
 
         if callback is not None:
-            if callback(res, errors, parameters, k) == True:
+            if callback(res, errors, parameters, k) is True:
                 break
 
     return result_dict, error
